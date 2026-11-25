@@ -9,7 +9,7 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
 - **Adapté à ton matériel** : barre de traction, table, chaise, barres à dips, élastiques… ou rien du tout.
   Sans barre, le dos travaille avec superman, Y-T-W, rowing serviette à la porte ou rowings sous une table.
 - **Programme hebdomadaire généré** : Full body, Haut du corps, Jambes & gainage, ATR… selon 2 à 6 séances par semaine.
-- **5 parcours de progression** de 8 à 11 niveaux chacun :
+- **5 parcours de progression**, jusqu'à 19 niveaux selon le matériel :
   - Poussée : pompes contre un mur → pompes à un bras
   - Tirage : superman → muscle-up, avec des variantes selon le matériel (porte, table, élastique, barre)
   - Jambes : squats assistés → pistol squat
