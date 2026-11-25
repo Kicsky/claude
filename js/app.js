@@ -77,6 +77,16 @@
     atr: '<path d="M3 28.2h26" stroke-opacity=".3"/><path d="M12.4 27.6 14 19.6M19.6 27.6 18 19.6M14 19.6h4M16 19.6v-9.2M16 10.4 14.6 3.4M16 10.4l1.4-7"/><circle cx="16" cy="23.4" r="2.2"/>'
   };
   var PIC = {}; Object.keys(PIC_BODY).forEach(function (k) { PIC[k] = pic(PIC_BODY[k]); });
+  I.trend = svg('<path d="M3.5 17.5 9 12l4 4 7.5-8"/><path d="M15 8h5.5v5.5"/>');
+  /* Icônes du matériel. */
+  var EQI = {
+    bar: svg('<path d="M3.5 6.5h17M6 4v16M18 4v16"/>'),
+    table: svg('<path d="M3 8.5h18M5.5 8.5V19M18.5 8.5V19M8 8.5v3.5h8V8.5"/>'),
+    chair: svg('<path d="M7 3.5v17M7 12.5h9.5v8"/>'),
+    dips: svg('<path d="M3.5 9h7M13.5 9h7M5.5 9v11M8.5 9v11M15.5 9v11M18.5 9v11"/>'),
+    band: svg('<path d="M4 12c0-2.6 3.6-4.6 8-4.6s8 2 8 4.6-3.6 4.6-8 4.6S4 14.6 4 12z"/><path d="M8.5 12h7"/>'),
+    none: svg('<circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/>')
+  };
 
   function picto(f, cls) {
     return '<span class="picto ' + (cls || '') + '" style="--fc:' + FAM[f].color + '">' + PIC[f] + '</span>';
@@ -102,7 +112,7 @@
   function blankState() {
     return {
       v: 1, createdAt: Date.now(), updatedAt: 0, onboarded: false,
-      profile: { name: '', goal: 'muscle', days: 3, bar: true, sound: true },
+      profile: { name: '', goal: 'muscle', days: 3, sound: true, equip: { bar: true, table: true, chair: true, dips: false, band: false } },
       prog: { push: 'pompes', pull: 'rowing-australien', legs: 'squats', core: 'planche', atr: 'pompes-pike' },
       targets: {}, xp: 0, rot: 0,
       totals: { sessions: 0, reps: 0, secs: 0 },
@@ -114,6 +124,10 @@
     var b = blankState();
     var out = Object.assign(b, s);
     out.profile = Object.assign(blankState().profile, s.profile || {});
+    // Anciennes sauvegardes : seule la barre était connue, table et chaise étaient supposées.
+    out.profile.equip = Object.assign({ bar: true, table: true, chair: true, dips: false, band: false },
+      s.profile.equip || (s.profile.bar === false ? { bar: false } : {}));
+    delete out.profile.bar;
     if (!D.GOALS[out.profile.goal]) out.profile.goal = 'muscle';
     if (!D.WEEK_PLANS[out.profile.days]) out.profile.days = 3;
     out.prog = Object.assign(blankState().prog, s.prog || {});
@@ -187,8 +201,16 @@
   }
 
   /* ================= Logique du programme ================= */
+  var EQ = {}; D.EQUIP.forEach(function (q) { EQ[q.id] = q; });
+  function has(s, id) { return !!(s.profile.equip && s.profile.equip[id]); }
+  function skipped(e, s) { return (e.skipIf || []).some(function (q) { return has(s, q); }); }
+  function missing(e, s) { return (e.req || []).filter(function (q) { return !has(s, q); }); }
+  function equipName(id) { return EQ[id] ? EQ[id].name.toLowerCase() : id; }
   function fullChain(f) { return D.EX.filter(function (e) { return e.f === f; }); }
-  function chain(f, s) { return D.EX.filter(function (e) { return e.f === f && (s.profile.bar || !e.bar); }); }
+  /* Parcours affiché : tout sauf les variantes rendues inutiles par ton matériel. */
+  function pathChain(f, s) { return D.EX.filter(function (e) { return e.f === f && !skipped(e, s); }); }
+  /* Parcours jouable : ce que ton matériel permet vraiment. */
+  function chain(f, s) { return pathChain(f, s).filter(function (e) { return !missing(e, s).length; }); }
   function curEx(f, s) {
     var c = chain(f, s), full = fullChain(f), id = s.prog[f];
     for (var k = 0; k < c.length; k++) if (c[k].id === id) return c[k];
@@ -227,6 +249,10 @@
         rest: off === 0 ? g.rest : Math.round(g.rest * 0.75), main: off === 0 && e.id === cur.id
       });
     });
+    // Sans barre ni table, les exercices de dos sont plus légers : une série de plus pour compenser.
+    if (!has(s, 'bar') && !has(s, 'table')) {
+      items.forEach(function (it) { if (it.ex.f === 'pull' && it.main) it.sets += 1; });
+    }
     return { tpl: tplId, name: tpl.name, items: items };
   }
   function estimate(sess) {
@@ -273,7 +299,7 @@
       first: n >= 1, s10: n >= 10, s30: n >= 30, s100: n >= 100,
       w2: st >= 2, w4: st >= 4, w12: st >= 12, r1k: r >= 1000, r10k: r >= 10000,
       lvl1: u >= 1, lvl5: u >= 5,
-      pushup: reached(s, 'push', 'pompes'), pullup: s.profile.bar && reached(s, 'pull', 'chin-ups'),
+      pushup: reached(s, 'push', 'pompes'), pullup: reached(s, 'pull', 'chin-ups'),
       handstand: reached(s, 'atr', 'atr-libre'), early: h < 8, night: h >= 21
     };
   }
@@ -338,8 +364,153 @@
   function nextUnlocks(s) {
     return D.FAMILIES.map(function (f) {
       var c = chain(f.id, s), e = curEx(f.id, s), nx = c[c.indexOf(e) + 1], t = targetOf(e, s);
-      return { f: f, e: e, nx: nx, t: t, pct: clamp((t - e.start) / Math.max(1, e.unlock - e.start), 0, 1) };
+      return { f: f, e: e, nx: nx, t: t, pct: progOf(e, t) };
     }).filter(function (x) { return x.nx; }).sort(function (a, b) { return b.pct - a.pct; });
+  }
+  function progOf(e, t) { return clamp((t - e.start) / Math.max(1, e.unlock - e.start), 0, 1); }
+
+  /* ---------- Projection : ce que tu sauras faire si tu tiens ton programme ---------- */
+
+  /* Part des exercices réussis en entier sur les dernières séances (0,75 par défaut). */
+  function successRate(s) {
+    var tot = 0, ok = 0;
+    s.history.slice(-24).forEach(function (h) {
+      (h.ex || []).forEach(function (x) {
+        tot++;
+        if (x.d && x.d.length && x.d.every(function (v) { return v >= x.t; })) ok++;
+      });
+    });
+    return tot < 8 ? { p: 0.75, measured: false } : { p: clamp(ok / tot, 0.5, 0.92), measured: true };
+  }
+
+  /*
+   * Estimation des capacités maximales en une série, à partir du niveau atteint.
+   * Ce sont des ordres de grandeur : 4 × 10 pompes réussies ≈ 13-14 pompes d'affilée.
+   */
+  function capacities(s) {
+    var out = {}, c, e, t, pr, i, idx = function (id) { return c.findIndex(function (x) { return x.id === id; }); };
+
+    c = chain('push', s); e = curEx('push', s); t = targetOf(e, s); pr = progOf(e, t); i = c.indexOf(e);
+    if (e.id === 'pompes-mur') out.push = 0;
+    else if (e.id === 'pompes-inclinees') out.push = Math.round(pr);
+    else if (e.id === 'pompes-genoux') out.push = 1 + Math.round(3 * pr);
+    else if (e.id === 'pompes') out.push = Math.round(t * 1.25) + 1;
+    else out.push = Math.min(60, 15 + 5 * (i - idx('pompes')) + Math.round(5 * pr));
+
+    out.pull = null;
+    if (has(s, 'bar')) {
+      c = chain('pull', s); e = curEx('pull', s); t = targetOf(e, s); pr = progOf(e, t); i = c.indexOf(e);
+      if (i < idx('tractions-negatives')) out.pull = 0;
+      else if (e.id === 'tractions-negatives') out.pull = Math.round(pr);
+      else if (e.id === 'tractions-elastique') out.pull = 1 + Math.round(2 * pr);
+      else if (e.id === 'chin-ups') out.pull = Math.round(t * 1.25);
+      else if (e.id === 'tractions') out.pull = Math.round(t * 1.2) + 1;
+      else out.pull = Math.min(30, 15 + 3 * (i - idx('tractions')) + Math.round(3 * pr));
+    }
+
+    c = chain('atr', s); e = curEx('atr', s); t = targetOf(e, s); pr = progOf(e, t); i = c.indexOf(e);
+    var iw = idx('atr-mur'), it = idx('atr-tentatives');
+    if (e.id === 'pompes-pike') out.wall = 0;
+    else if (e.id === 'montee-mur') out.wall = Math.round(5 + 10 * pr);
+    else if (e.id === 'atr-mur') out.wall = Math.round(t * 1.2);
+    else out.wall = Math.min(90, 55 + 5 * (i - iw));
+    if (i < it) out.free = 0;
+    else if (e.id === 'atr-tentatives') out.free = Math.round(t * 0.4);
+    else if (e.id === 'atr-libre') out.free = Math.round(t * 1.15);
+    else out.free = Math.min(90, 35 + Math.round(25 * pr));
+    return out;
+  }
+
+  /*
+   * Rejoue ton programme semaine après semaine avec les mêmes règles de progression.
+   * Chaque exercice réussit avec ta probabilité de réussite, un peu moins aux niveaux élevés.
+   */
+  var simCache = {};
+  function simulate(s, weeks, days) {
+    var key = JSON.stringify([s.prog, s.targets, s.profile, s.rot, s.history.length, weeks, days || 0]);
+    if (simCache.key === key) return simCache.val;
+    var prof = Object.assign({}, s.profile, days ? { days: days } : {});
+    var sim = { profile: prof, prog: Object.assign({}, s.prog), targets: Object.assign({}, s.targets), rot: s.rot };
+    var sr = successRate(s), credit = {}, plan = planOf(sim), events = [];
+    var snap = function (w) {
+      var lv = {};
+      D.FAMILIES.forEach(function (f) { var e = curEx(f.id, sim); lv[f.id] = { id: e.id, t: targetOf(e, sim) }; });
+      return { w: w, cap: capacities(sim), lv: lv };
+    };
+    var snaps = [snap(0)];
+    for (var w = 1; w <= weeks; w++) {
+      for (var k = 0; k < plan.length; k++) {
+        var sess = buildSession(plan[sim.rot % plan.length], sim);
+        sim.rot++;
+        sess.items.forEach(function (it) {
+          var e = it.ex, c = chain(e.f, sim), idx = c.indexOf(e);
+          credit[e.id] = (credit[e.id] || 0) + sr.p * (1 - 0.35 * idx / Math.max(1, c.length - 1));
+          if (credit[e.id] < 1) return;
+          credit[e.id] -= 1;
+          var next = c[idx + 1], isCur = curEx(e.f, sim).id === e.id, t = it.target;
+          if (isCur && next && t >= e.unlock) {
+            sim.prog[e.f] = next.id;
+            if (sim.targets[next.id] == null) sim.targets[next.id] = next.start;
+            events.push({ w: w, f: e.f, id: next.id });
+            return;
+          }
+          var cap = isCur && next ? e.unlock : e.unlock * 2;
+          sim.targets[e.id] = Math.min(Math.max(cap, t), t + stepOf(e));
+        });
+      }
+      snaps.push(snap(w));
+    }
+    var val = { snaps: snaps, events: events, p: sr.p, measured: sr.measured, days: prof.days };
+    if (!days) simCache = { key: key, val: val };
+    return val;
+  }
+
+  var MILESTONES = [
+    { key: 'push', f: 'push', marks: [1, 5, 10, 15, 20, 30, 40, 50], txt: function (m) { return m === 1 ? 'Ta première pompe classique' : m + ' pompes d’affilée'; } },
+    { key: 'pull', f: 'pull', marks: [1, 3, 5, 10, 15, 20], txt: function (m) { return m === 1 ? 'Ta première traction' : m + ' tractions d’affilée'; } },
+    { key: 'wall', f: 'atr', marks: [15, 30, 60], txt: function (m) { return m + ' s d’ATR contre le mur'; } },
+    { key: 'free', f: 'atr', marks: [3, 10, 20, 30, 60], txt: function (m) { return m + ' s d’ATR sans appui'; } }
+  ];
+  function milestones(sim, H) {
+    var out = [], c0 = sim.snaps[0].cap;
+    MILESTONES.forEach(function (d) {
+      if (c0[d.key] == null) return;
+      d.marks.forEach(function (m) {
+        if (c0[d.key] >= m) return;
+        for (var w = 1; w < sim.snaps.length && w <= H; w++) {
+          if (sim.snaps[w].cap[d.key] >= m) { out.push({ w: w, f: d.f, txt: d.txt(m), kind: 'cap' }); break; }
+        }
+      });
+    });
+    sim.events.forEach(function (ev) {
+      if (ev.w <= H) out.push({ w: ev.w, f: ev.f, txt: 'Nouveau niveau : ' + EXM[ev.id].name, kind: 'lvl' });
+    });
+    out.sort(function (a, b) { return a.w - b.w || (a.kind === 'cap' ? -1 : 1); });
+    return out;
+  }
+  function unlockWeeks(sim) {
+    var m = {};
+    sim.events.forEach(function (ev) { if (m[ev.id] == null) m[ev.id] = ev.w; });
+    return m;
+  }
+  function inWeeks(w) {
+    if (w <= 0) return 'cette semaine';
+    if (w < 9) return 'dans ' + w + ' semaine' + (w > 1 ? 's' : '');
+    var m = Math.round(w / 4.35);
+    return m >= 12 ? 'dans 1 an environ' : 'dans ' + m + ' mois';
+  }
+  function atWeek(w) {
+    var d = addDays(new Date(), w * 7), o = { day: 'numeric', month: 'short' };
+    if (d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+    return 'vers le ' + fmtDate(d, o);
+  }
+  /* Les capacités les plus parlantes pour ce profil, au format affichable. */
+  function capView(cap) {
+    var v = [{ k: 'push', f: 'push', n: cap.push, unit: cap.push > 1 ? 'pompes d’affilée' : 'pompe classique' }];
+    if (cap.pull != null) v.push({ k: 'pull', f: 'pull', n: cap.pull, unit: cap.pull > 1 ? 'tractions d’affilée' : 'traction' });
+    if (cap.free > 0) v.push({ k: 'atr', f: 'atr', n: cap.free, sfx: ' s', unit: 'd’ATR sans appui' });
+    else v.push({ k: 'atr', f: 'atr', n: cap.wall, sfx: ' s', unit: 'd’ATR contre le mur' });
+    return v;
   }
 
   /* Petit générateur pseudo-aléatoire pour une démo reproductible. */
@@ -354,7 +525,7 @@
   function makeDemo() {
     var s = blankState(), rand = rng(7), now = new Date();
     s.onboarded = true;
-    s.profile = { name: 'Alex', goal: 'muscle', days: 3, bar: true, sound: true };
+    s.profile = { name: 'Alex', goal: 'muscle', days: 3, sound: true, equip: { bar: true, table: true, chair: true, dips: false, band: false } };
     s.prog = { push: 'pompes-genoux', pull: 'rowing-australien', legs: 'squats', core: 'planche', atr: 'pompes-pike' };
     s.targets = { 'pompes-genoux': 11, 'rowing-australien': 11, squats: 18, planche: 40, 'pompes-pike': 9 };
     var start = addDays(weekStart(now), -7 * 9);
@@ -380,8 +551,8 @@
   /* ================= Rendu : coque & navigation ================= */
   var VIEWS = ['accueil', 'programme', 'progres', 'profil'];
   var view = VIEWS.indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'accueil';
-  var ui = { fam: 'push', histAll: false };
-  var OB = { active: false, step: 0, name: '', goal: null, push: null, pull: null, atr: null, days: 3, retake: false };
+  var ui = { fam: 'push', histAll: false, progTab: 'semaine', h: 26, metric: 'push', msAll: false };
+  var OB = newOB();
 
   var appEl = $('#app');
   var tabbar = $('#tabbar');
@@ -437,6 +608,12 @@
   }
 
   /* ================= Accueil ================= */
+  function teaserGrid(cap) {
+    var v = capView(cap);
+    return '<div class="teaser-grid n' + v.length + '">' + v.map(function (x) {
+      return '<div><b>' + (x.k === 'atr' ? '' : '≈ ') + x.n + (x.sfx || '') + '</b><span>' + x.unit + '</span></div>';
+    }).join('') + '</div>';
+  }
   function renderHome() {
     var s = S, now = new Date(), goal = s.profile.days;
     var ws = weekStart(now), week = sessionsInWeek(ws, s), weekDone = week.length;
@@ -456,6 +633,7 @@
     var trainedDays = {};
     week.forEach(function (h) { trainedDays[dayKey(new Date(h.at))] = true; });
     var idxInWeek = Math.min(weekDone + 1, goal);
+    var sim = simulate(s, 52), uw = unlockWeeks(sim);
 
     var html = '<section class="view">';
     html += '<header class="topbar"><div class="hello"><p class="eyebrow">' + fmtDate(now, { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>' +
@@ -464,7 +642,7 @@
 
     if (resume) {
       html += '<div class="card tight" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
-        '<div><b>Séance en cours</b><p class="faint" style="font-size:13px">' + esc(resume.sess.name) + ', commencée ' + fmtDate(new Date(resume.startedAt), { hour: '2-digit', minute: '2-digit' }) + '</p></div>' +
+        '<div><b>Séance en cours</b><p class="faint" style="font-size:13px">' + esc(resume.sess.name) + ', commencée à ' + fmtDate(new Date(resume.startedAt), { hour: '2-digit', minute: '2-digit' }) + '</p></div>' +
         '<div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-act="resume-drop">Effacer</button><button class="btn primary" type="button" data-act="resume">' + I.play + 'Reprendre</button></div></div>';
     }
 
@@ -488,13 +666,21 @@
       '<div class="stat"><div class="v">' + fmtInt(s.totals.sessions) + '</div><div class="l">séances terminées</div></div>' +
       '<div class="stat"><div class="v">' + fmtInt(s.totals.reps) + '</div><div class="l">répétitions au total</div></div></div>';
 
+    // Projection à 3 mois
+    var ms = milestones(sim, 52)[0];
+    html += '<div class="section-head"><h2>Dans 3 mois</h2><button class="link" type="button" data-act="go-traj">Voir mon planning</button></div>' +
+      '<button class="card traj-teaser" type="button" data-act="go-traj" aria-label="Voir mon planning de progression">' +
+      '<span class="muted" style="font-size:13.5px;display:block">Si tu tiens tes ' + goal + ' séances par semaine, tu devrais tenir :</span>' + teaserGrid(sim.snaps[13].cap) +
+      (ms ? '<span class="teaser-next">' + I.trend + '<span>Prochaine étape : <b>' + esc(ms.txt) + '</b>, ' + atWeek(ms.w) + '</span></span>' : '') + '</button>';
+
     var nu = nextUnlocks(s).slice(0, 2);
     if (nu.length) {
       html += '<div class="section-head"><h2>Prochains paliers</h2><button class="link" type="button" data-act="nav" data-view="progres">Voir le parcours</button></div>';
       html += '<div class="card" style="display:grid;gap:16px">' + nu.map(function (x) {
+        var w = uw[x.nx.id];
         return '<div class="next-level">' + picto(x.f.id) + '<div><div class="row"><b>' + esc(x.e.name) + ' → ' + esc(x.nx.name) + '</b></div>' +
           '<div class="progress fc" style="--fc:' + x.f.color + '"><i style="width:' + Math.round(x.pct * 100) + '%"></i></div>' +
-          '<div class="row faint" style="margin:6px 0 0;font-size:12px"><span>Objectif ' + x.t + unitShort(x.e) + ' sur ' + x.e.unlock + unitShort(x.e) + '</span><span>' + Math.round(x.pct * 100) + ' %</span></div></div></div>';
+          '<div class="row faint" style="margin:6px 0 0;font-size:12px"><span>Objectif ' + x.t + unitShort(x.e) + ' sur ' + x.e.unlock + unitShort(x.e) + '</span><span>' + (w != null ? 'estimé ' + inWeeks(w) : Math.round(x.pct * 100) + ' %') + '</span></div></div></div>';
       }).join('') + '</div>';
     }
 
@@ -506,13 +692,30 @@
 
   /* ================= Programme ================= */
   function renderProgram() {
-    var s = S, plan = planOf(s), g = D.GOALS[s.profile.goal], ws = weekStart(new Date());
+    var s = S;
+    var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Semaine ' + weekNumber(s) + '</p><h1 class="title-xl">Programme</h1></div></header>';
+    html += '<div class="seg" role="group" aria-label="Affichage du programme">' +
+      '<button type="button" data-act="prog-tab" data-v="semaine" aria-pressed="' + (ui.progTab === 'semaine') + '">Ma semaine</button>' +
+      '<button type="button" data-act="prog-tab" data-v="trajectoire" aria-pressed="' + (ui.progTab === 'trajectoire') + '">Mon planning</button></div>';
+    html += ui.progTab === 'trajectoire' ? renderTrajectory(s) : renderWeek(s);
+    return html + '</section>';
+  }
+
+  /* Ce que chaque matériel manquant débloquerait. */
+  function equipGains(s) {
+    return D.EQUIP.filter(function (q) { return !has(s, q.id); }).map(function (q) {
+      var ex = D.EX.filter(function (e) { var m = missing(e, s); return !skipped(e, s) && m.length === 1 && m[0] === q.id; });
+      return { q: q, ex: ex };
+    }).filter(function (x) { return x.ex.length; }).sort(function (a, b) { return b.ex.length - a.ex.length; });
+  }
+
+  function renderWeek(s) {
+    var plan = planOf(s), g = D.GOALS[s.profile.goal], ws = weekStart(new Date());
     var doneTpl = {};
     sessionsInWeek(ws, s).forEach(function (h) { doneTpl[h.tpl] = true; });
-    var nt = nextTpl(s);
-    var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Semaine ' + weekNumber(s) + '</p><h1 class="title-xl">Programme</h1></div></header>';
-    html += '<div class="summary-chips"><span class="chip violet">' + I.target + g.name + '</span><span class="chip">' + s.profile.days + ' séances / semaine</span>' +
-      '<span class="chip">' + I.timer + 'Repos ' + g.rest + ' s</span><span class="chip">' + (s.profile.bar ? 'Avec barre' : 'Sans barre') + '</span></div>';
+    var nt = nextTpl(s), owned = D.EQUIP.filter(function (q) { return has(s, q.id); });
+    var html = '<div class="summary-chips"><span class="chip violet">' + I.target + g.name + '</span><span class="chip">' + s.profile.days + ' séances / semaine</span>' +
+      '<span class="chip">' + I.timer + 'Repos ' + g.rest + ' s</span></div>';
     html += '<p class="muted" style="font-size:14px">Les séances tournent dans cet ordre. Les objectifs montent tout seuls quand tu réussis toutes tes séries.</p>';
 
     html += plan.map(function (tplId, k) {
@@ -524,13 +727,142 @@
         '<div class="ex-list">' + sess.items.map(exRow).join('') + '</div></article>';
     }).join('');
 
+    // Matériel
+    var gains = equipGains(s);
+    html += '<div class="section-head"><h2>Ton matériel</h2><button class="link" type="button" data-act="nav" data-view="profil">Modifier</button></div>';
+    html += '<div class="card" style="display:grid;gap:14px"><div class="summary-chips">' +
+      (owned.length ? owned.map(function (q) { return '<span class="chip">' + EQI[q.id] + q.name + '</span>'; }).join('') : '<span class="chip">' + EQI.none + 'Aucun matériel</span>') + '</div>';
+    if (!owned.length || !has(s, 'bar')) {
+      html += '<p class="muted" style="font-size:13.5px">' + (owned.length ? 'Sans barre' : 'Sans matériel') + ', ton dos travaille avec ' +
+        chain('pull', s).map(function (e) { return e.name.toLowerCase(); }).join(', ') + '. Le reste du programme se fait au sol et contre un mur.</p>';
+    }
+    if (gains.length) {
+      html += '<div style="display:grid;gap:12px">' + gains.slice(0, 3).map(function (x) {
+        var names = x.ex.slice(0, 3).map(function (e) { return e.name.toLowerCase(); }).join(', ') + (x.ex.length > 3 ? '…' : '');
+        return '<div class="equip-tip"><span class="eq-ic">' + EQI[x.q.id] + '</span><div><b>Avec ' + x.q.name.toLowerCase() + ' : +' + x.ex.length + ' niveau' + (x.ex.length > 1 ? 'x' : '') + '</b><p class="faint" style="font-size:12.5px">' + names + '</p></div></div>';
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+
     html += '<div class="section-head"><h2>Tes niveaux actuels</h2></div><div class="fam-grid">' + D.FAMILIES.map(function (f) {
       var c = chain(f.id, s), e = curEx(f.id, s);
       return '<button class="fam-row" type="button" data-act="fam-open" data-f="' + f.id + '">' + picto(f.id) +
         '<span class="t"><b>' + esc(e.name) + '</b><span>' + f.name + ' · objectif ' + targetOf(e, s) + unitShort(e) + '</span></span>' +
         '<span class="lvl">Niv. ' + (c.indexOf(e) + 1) + '/' + c.length + '</span></button>';
-    }).join('') + '</div></section>';
+    }).join('') + '</div>';
     return html;
+  }
+
+  var HORIZONS = [[13, '3 mois'], [26, '6 mois'], [52, '1 an']];
+  function renderTrajectory(s) {
+    var H = ui.h, sim = simulate(s, 52), now = sim.snaps[0].cap, end = sim.snaps[H].cap;
+    var hName = HORIZONS.find(function (x) { return x[0] === H; })[1];
+    var html = '<div class="card-hero traj-hero"><p class="eyebrow" style="color:var(--violet-2)">Si tu tiens ton programme</p>' +
+      '<h2 class="hero-title" style="font-size:clamp(24px,7vw,30px)">Dans ' + hName + '</h2>' +
+      '<div class="seg" role="group" aria-label="Horizon" style="margin-top:14px">' + HORIZONS.map(function (x) {
+        return '<button type="button" data-act="traj-h" data-v="' + x[0] + '" aria-pressed="' + (x[0] === H) + '">' + x[1] + '</button>';
+      }).join('') + '</div>';
+    var cv = capView(end);
+    html += '<div class="cap-grid n' + cv.length + '">' + cv.map(function (x) {
+      var before = x.k === 'atr' ? (end.free > 0 ? now.free : now.wall) : now[x.k];
+      var gain = x.n - before;
+      return '<div class="cap-card">' + picto(x.f) + '<div class="big">' + (x.k === 'atr' ? '' : '≈ ') + x.n + (x.sfx || '') + '</div><div class="unit">' + x.unit + '</div>' +
+        '<div class="from">Aujourd’hui : ' + before + (x.sfx || '') + '</div>' + (gain > 0 ? '<div class="delta">+' + gain + (x.sfx || '') + '</div>' : '') + '</div>';
+    }).join('') + '</div></div>';
+
+    // Courbe
+    var metrics = [['push', 'Pompes']];
+    if (now.pull != null) metrics.push(['pull', 'Tractions']);
+    metrics.push(['atr', 'ATR']);
+    if (!metrics.some(function (m) { return m[0] === ui.metric; })) ui.metric = 'push';
+    html += '<div class="card"><div class="section-head" style="margin:0 0 10px"><h2>Ta courbe estimée</h2></div>' +
+      '<div class="fam-tabs" role="group" aria-label="Capacité affichée">' + metrics.map(function (m) {
+        return '<button class="fam-tab" type="button" style="--fc:' + FAM[m[0]].color + '" data-act="traj-metric" data-v="' + m[0] + '" aria-pressed="' + (ui.metric === m[0]) + '">' + PIC[m[0]] + m[1] + '</button>';
+      }).join('') + '</div>' + trajChart(sim, ui.metric, H) + '</div>';
+
+    // Étapes
+    var ms = milestones(sim, H), shown = ui.msAll ? ms : ms.slice(0, 7);
+    html += '<div class="section-head"><h2>Tes prochaines étapes</h2>' + (ms.length > 7 ? '<button class="link" type="button" data-act="ms-toggle">' + (ui.msAll ? 'Réduire' : 'Tout voir (' + ms.length + ')') + '</button>' : '') + '</div>';
+    html += '<div class="card">' + (shown.length ? '<div class="ms-list">' + shown.map(function (m) {
+      return '<div class="ms-row">' + picto(m.f) + '<div><b>' + esc(m.txt.charAt(0).toUpperCase() + m.txt.slice(1)) + '</b><span class="s">' + atWeek(m.w) + ' · ' + inWeeks(m.w) + '</span></div>' +
+        '<span class="ms-w">S' + m.w + '</span></div>';
+    }).join('') + '</div>' : '<div class="empty">' + I.trend + '<span>Pas de nouveau palier estimé sur cette période. Essaie un horizon plus long.</span></div>') + '</div>';
+
+    // Une séance de plus ?
+    if (s.profile.days < 6) {
+      var more = simulate(s, H, s.profile.days + 1).snaps[H].cap, k = now.pull != null ? 'pull' : 'push';
+      var a = end[k], b = more[k], label = k === 'pull' ? 'tractions' : 'pompes';
+      if (b > a) {
+        html += '<div class="card equip-tip"><span class="eq-ic">' + I.up + '</span><div><b>Avec ' + (s.profile.days + 1) + ' séances par semaine</b>' +
+          '<p class="faint" style="font-size:13px">≈ ' + b + ' ' + label + ' d’affilée dans ' + hName + ' au lieu de ' + a + '. À régler dans ton profil.</p></div></div>';
+      }
+    }
+    var gains = equipGains(s).filter(function (x) { return x.q.id === 'bar'; });
+    if (gains.length) {
+      html += '<div class="card equip-tip"><span class="eq-ic">' + EQI.bar + '</span><div><b>Avec une barre de traction</b>' +
+        '<p class="faint" style="font-size:13px">Tu suivrais aussi tes tractions, et ' + gains[0].ex.length + ' niveaux de plus s’ouvriraient, jusqu’au muscle-up.</p></div></div>';
+    }
+    html += '<p class="storage-note">' + I.info + '<span>Estimation : tes ' + sim.days + ' séances par semaine, avec ' + Math.round(sim.p * 100) + ' % d’exercices réussis en entier' +
+      (sim.measured ? ' (ton taux sur tes dernières séances)' : ' (un rythme courant au début)') + '. La progression ralentit aux niveaux avancés. Sommeil, alimentation et récupération comptent aussi : elle se recalcule après chaque séance.</span></p>';
+    return html;
+  }
+
+  function trajChart(sim, metric, H) {
+    var snaps = sim.snaps.slice(0, H + 1);
+    var series = metric === 'atr'
+      ? [{ k: 'free', name: 'Sans appui', cls: '' }, { k: 'wall', name: 'Contre le mur', cls: ' alt' }]
+      : [{ k: metric, name: metric === 'pull' ? 'Tractions' : 'Pompes', cls: '' }];
+    var unit = metric === 'atr' ? ' s' : '';
+    var W = 340, Hh = 190, L = 32, R = 26, T = 20, B = 24, pw = W - L - R, ph = Hh - T - B;
+    var max = niceMax(Math.max(5, Math.max.apply(null, snaps.map(function (sn) { return Math.max.apply(null, series.map(function (se) { return sn.cap[se.k] || 0; })); }))));
+    var x = function (w) { return L + (w / H) * pw; }, y = function (v) { return T + ph - (v / max) * ph; };
+    var out = '<div class="chart-wrap" data-tipwrap><svg viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="Courbe estimée sur ' + H + ' semaines">' +
+      '<defs><linearGradient id="trajFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9d70ff" stop-opacity=".35"/><stop offset="1" stop-color="#9d70ff" stop-opacity="0"/></linearGradient></defs>';
+    [0, 0.5, 1].forEach(function (f) {
+      var v = max * f, yy = y(v);
+      out += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/><text class="axis" x="' + (L - 6) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + fmtInt(v) + '</text>';
+    });
+    var ticks = H === 13 ? [[0, 'Auj.'], [4, '1 mois'], [9, '2 mois'], [13, '3 mois']] : H === 26 ? [[0, 'Auj.'], [9, '2 mois'], [17, '4 mois'], [26, '6 mois']] : [[0, 'Auj.'], [13, '3 mois'], [26, '6 mois'], [39, '9 mois'], [52, '1 an']];
+    ticks.forEach(function (t) {
+      out += '<text class="axis" x="' + x(t[0]) + '" y="' + (Hh - 6) + '" text-anchor="' + (t[0] === 0 ? 'start' : t[0] === H ? 'end' : 'middle') + '">' + t[1] + '</text>';
+    });
+    series.slice().reverse().forEach(function (se) {
+      var d = '';
+      snaps.forEach(function (sn, i) {
+        var v = sn.cap[se.k] || 0;
+        d += i === 0 ? 'M' + x(0) + ',' + y(v) : 'H' + x(i) + 'V' + y(v);
+      });
+      if (!se.cls) out += '<path class="area" d="' + d + 'V' + y(0) + 'H' + x(0) + 'Z"/>';
+      out += '<path class="line' + se.cls + '" d="' + d + '"/>';
+    });
+    // Paliers débloqués sur la courbe
+    sim.events.forEach(function (ev) {
+      if (ev.f !== metric || ev.w > H) return;
+      var v = snaps[ev.w].cap[series[0].k] || 0;
+      if (metric === 'atr' && !v) v = snaps[ev.w].cap.wall;
+      out += '<circle class="mile" cx="' + x(ev.w) + '" cy="' + y(v) + '" r="4.5" style="--fc:' + FAM[ev.f].color + '"/>';
+    });
+    // Aujourd'hui et point d'arrivée
+    var s0 = series.map(function (se) { return snaps[0].cap[se.k] || 0; }), sH = series.map(function (se) { return snaps[H].cap[se.k] || 0; });
+    out += '<circle class="now" cx="' + x(0) + '" cy="' + y(Math.max.apply(null, s0)) + '" r="4"/>';
+    series.forEach(function (se, i) {
+      if (metric === 'atr' && i === 1 && sH[0] > 0 && Math.abs(y(sH[1]) - y(sH[0])) < 12) return;
+      out += '<circle class="end" cx="' + x(H) + '" cy="' + y(sH[i]) + '" r="4.5"/><text class="val" x="' + (x(H) + 7) + '" y="' + (y(sH[i]) + 4) + '">' + sH[i] + unit + '</text>';
+    });
+    // Zones de survol par semaine
+    var labelOf = function (sn) {
+      var lv = sn.lv[metric === 'atr' ? 'atr' : metric], e = EXM[lv.id];
+      var vals = series.map(function (se) { return se.name + ' ' + (sn.cap[se.k] || 0) + unit; }).join(', ');
+      return (sn.w === 0 ? 'Aujourd’hui' : 'Semaine ' + sn.w + ' · ' + atWeek(sn.w).replace('vers le ', '')) + ' : ' + vals + ' · niveau ' + e.name.toLowerCase();
+    };
+    snaps.forEach(function (sn, i) {
+      var x0 = i === 0 ? L : (x(i - 1) + x(i)) / 2, x1 = i === H ? W - R : (x(i) + x(i + 1)) / 2;
+      out += '<rect class="bar-hit" x="' + x0 + '" y="' + T + '" width="' + Math.max(1, x1 - x0) + '" height="' + ph + '" data-tip="' + esc(labelOf(sn)) + '"/>';
+    });
+    out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ph) + '" y2="' + (T + ph) + '" stroke="rgba(206,190,255,.18)"/></svg>';
+    if (series.length > 1) out += '<div class="legend"><span><i></i>Sans appui</span><span><i class="alt"></i>Contre le mur</span></div>';
+    out += '<p class="faint" style="font-size:12px;margin-top:8px">' + (metric === 'atr' ? 'Secondes tenues en ATR' : metric === 'pull' ? 'Tractions d’affilée' : 'Pompes classiques d’affilée') + '. Les ronds marquent les niveaux débloqués.</p></div>';
+    return out;
   }
 
   /* ================= Progrès ================= */
@@ -548,27 +880,28 @@
     html += '<div class="card"><div class="section-head" style="margin:0 0 6px"><h2>Répétitions par semaine</h2><span class="faint" style="font-size:12.5px">8 semaines</span></div>' + weeklyChart(s) + '</div>';
 
     // Parcours
-    var f = FAM[ui.fam], c = chain(f.id, s), cur = curEx(f.id, s), ci = c.indexOf(cur);
-    var full = fullChain(f.id);
+    var f = FAM[ui.fam], c = chain(f.id, s), cur = curEx(f.id, s), ci = c.indexOf(cur), path = pathChain(f.id, s);
+    var uw = unlockWeeks(simulate(s, 52));
     html += '<div class="section-head"><h2>Parcours</h2><span class="faint" style="font-size:12.5px">' + s.unlocks.length + ' palier' + (s.unlocks.length > 1 ? 's' : '') + ' débloqué' + (s.unlocks.length > 1 ? 's' : '') + '</span></div>';
     html += '<div class="card"><div class="fam-tabs" role="group" aria-label="Familles">' + D.FAMILIES.map(function (x) {
       return '<button class="fam-tab" type="button" style="--fc:' + x.color + '" data-act="fam" data-f="' + x.id + '" aria-pressed="' + (x.id === ui.fam) + '">' + PIC[x.id] + x.name + '</button>';
     }).join('') + '</div>';
-    html += '<p class="faint" style="font-size:12.5px;margin-top:10px">' + f.muscles + ' · niveau ' + (ci + 1) + ' sur ' + c.length + '</p>';
-    html += '<div class="path" style="--fc:' + f.color + '">' + full.map(function (e) {
+    html += '<p class="faint" style="font-size:12.5px;margin-top:10px">' + f.muscles + ' · niveau ' + (ci + 1) + ' sur ' + c.length + ' avec ton matériel</p>';
+    html += '<div class="path" style="--fc:' + f.color + '">' + path.map(function (e) {
       var k = c.indexOf(e);
       if (k < 0) {
-        return '<button class="path-node locked" type="button" data-act="ex-info" data-id="' + e.id + '"><span class="path-dot">' + I.lock + '</span><span class="t"><b>' + esc(e.name) + '</b><span>Nécessite une barre de traction</span></span><span class="tag">Barre</span></button>';
+        return '<button class="path-node locked" type="button" data-act="ex-info" data-id="' + e.id + '"><span class="path-dot">' + I.lock + '</span><span class="t"><b>' + esc(e.name) + '</b><span>Nécessite : ' + missing(e, s).map(equipName).join(' + ') + '</span></span><span class="tag">Matériel</span></button>';
       }
       var st = k < ci ? 'done' : k === ci ? 'current' : 'locked';
-      var t = targetOf(e, s), pct = clamp((t - e.start) / Math.max(1, e.unlock - e.start), 0, 1);
-      var date = '';
+      var t = targetOf(e, s), pct = progOf(e, t), sub;
       if (st === 'done') {
         var u = s.unlocks.filter(function (x) { return x.id === (c[k + 1] && c[k + 1].id); }).pop();
-        date = u ? 'Validé le ' + fmtDate(new Date(u.at), { day: 'numeric', month: 'short' }) : 'Acquis';
+        sub = u ? 'Validé le ' + fmtDate(new Date(u.at), { day: 'numeric', month: 'short' }) : 'Acquis';
+      } else if (st === 'current') {
+        sub = 'Objectif ' + t + unitShort(e) + ' · déblocage à ' + e.unlock + unitShort(e);
+      } else {
+        sub = uw[e.id] != null ? 'Estimé ' + atWeek(uw[e.id]) + ' (' + inWeeks(uw[e.id]) + ')' : 'Niveau ' + (k + 1) + ' · plus d’un an';
       }
-      var sub = st === 'done' ? date : st === 'current' ? 'Objectif ' + t + unitShort(e) + ' · déblocage à ' + e.unlock + unitShort(e) : 'Déblocage à ' + e.unlock + unitShort(e) + ' sur le niveau précédent';
-      if (st === 'locked') sub = 'Niveau ' + (k + 1);
       return '<button class="path-node ' + st + '" type="button" data-act="ex-info" data-id="' + e.id + '"><span class="path-dot">' + (st === 'done' ? I.check : st === 'locked' ? I.lock : (k + 1)) + '</span>' +
         '<span class="t"><b>' + esc(e.name) + '</b><span>' + sub + '</span>' + (st === 'current' && c[k + 1] ? '<span class="progress fc" style="display:block;margin-top:7px;--fc:' + f.color + '"><i style="width:' + Math.round(pct * 100) + '%"></i></span>' : '') + '</span>' +
         '<span class="tag">' + (st === 'done' ? 'Acquis' : st === 'current' ? 'En cours' : '') + '</span></button>';
@@ -716,15 +1049,19 @@
     var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Réglages</p><h1 class="title-xl">Profil</h1></div></header>';
     html += '<div class="card" style="display:grid;gap:18px"><div class="field"><label for="pf-name">Prénom</label><input id="pf-name" class="input" maxlength="30" autocomplete="given-name" placeholder="Ton prénom" value="' + esc(p.name) + '"></div>' +
       '<div class="field"><span class="label">Objectif</span><div class="seg" role="group" aria-label="Objectif">' + Object.keys(D.GOALS).map(function (k) {
-        return '<button type="button" data-act="pf-goal" data-v="' + k + '" aria-pressed="' + (p.goal === k) + '">' + D.GOALS[k].name.replace(' & skills', '').replace('Prise de muscle', 'Muscle').replace('Remise en forme', 'Forme') + '</button>';
+        return '<button type="button" data-act="pf-goal" data-v="' + k + '" aria-pressed="' + (p.goal === k) + '">' + { force: 'Force', muscle: 'Muscle', forme: 'Forme' }[k] + '</button>';
       }).join('') + '</div><p class="faint" id="pf-goal-desc" style="font-size:12.5px">' + D.GOALS[p.goal].desc + '</p></div>' +
       '<div class="field"><span class="label">Séances par semaine</span><div class="seg" role="group" aria-label="Séances par semaine">' + [2, 3, 4, 5, 6].map(function (n) {
         return '<button type="button" data-act="pf-days" data-v="' + n + '" aria-pressed="' + (p.days === n) + '">' + n + '</button>';
       }).join('') + '</div></div></div>';
 
-    html += '<div class="card"><div class="toggle-row"><span class="t"><b>Barre de traction</b><span>Débloque les tractions et les relevés suspendus</span></span>' +
-      '<button class="switch" type="button" role="switch" aria-label="Barre de traction" aria-checked="' + p.bar + '" data-act="pf-bar"></button></div>' +
-      '<div class="toggle-row"><span class="t"><b>Sons et vibrations</b><span>Signal à la fin des repos et des chronos</span></span>' +
+    html += '<div class="section-head"><h2>Mon matériel</h2></div><div class="card">' + D.EQUIP.map(function (q) {
+      return '<div class="toggle-row"><span class="t eq-t"><span class="eq-ic">' + EQI[q.id] + '</span><span><b>' + q.name + '</b><span>' + q.desc + '</span></span></span>' +
+        '<button class="switch" type="button" role="switch" aria-label="' + q.name + '" aria-checked="' + has(s, q.id) + '" data-act="pf-equip" data-id="' + q.id + '"></button></div>';
+    }).join('') + '</div>';
+    html += '<p class="faint" style="font-size:12.5px;margin-top:-8px">Ton programme et ton planning s’adaptent dès que tu changes ton matériel.</p>';
+
+    html += '<div class="card"><div class="toggle-row"><span class="t"><b>Sons et vibrations</b><span>Signal à la fin des repos et des chronos</span></span>' +
       '<button class="switch" type="button" role="switch" aria-label="Sons et vibrations" aria-checked="' + p.sound + '" data-act="pf-sound"></button></div></div>';
 
     html += '<div class="card" style="display:grid;gap:10px"><button class="btn block" type="button" data-act="retake">' + I.refresh + 'Refaire le test de niveau</button>' +
@@ -739,77 +1076,103 @@
   }
 
   /* ================= Onboarding ================= */
+  function newOB(o) {
+    return Object.assign({ active: false, screen: 'welcome', qi: 0, name: '', goal: null, equip: { bar: false, table: false, chair: false, dips: false, band: false }, push: null, pull: null, atr: null, days: 3, retake: false }, o || {});
+  }
+  function obQuestions() {
+    var q = ['goal', 'equip', 'push'];
+    if (OB.equip.bar) q.push('pull');
+    return q.concat(['atr', 'days']);
+  }
   var PUSH_OPTS = [['0', '0–3', 'Pas encore, ou sur les genoux'], ['1', '4–10', 'Quelques-unes propres'], ['2', '11–20', 'À l’aise'], ['3', '21+', 'Facile']];
-  var PULL_OPTS = [['nobar', '—', 'Je n’ai pas de barre'], ['0', '0', 'Aucune pour l’instant'], ['1', '1–4', 'Quelques-unes'], ['2', '5–10', 'Une bonne série'], ['3', '11+', 'Beaucoup']];
+  var PULL_OPTS = [['0', '0', 'Aucune pour l’instant'], ['1', '1–4', 'Quelques-unes'], ['2', '5–10', 'Une bonne série'], ['3', '11+', 'Beaucoup']];
   var ATR_OPTS = [['never', '1', 'Jamais essayé', 'On commence par les épaules'], ['wall', '2', 'Contre un mur', 'Je tiens quelques secondes au mur'], ['free', '3', 'En libre', 'Je tiens quelques secondes sans appui']];
 
   function optBtn(k, v, big, title, sub) {
     return '<button class="option" type="button" data-act="ob-pick" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (String(OB[k]) === String(v)) + '">' +
       '<span class="o-big">' + big + '</span><span class="o-t"><b>' + title + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</span><span class="check">' + I.check + '</span></button>';
   }
+  function equipOpt(id, title, sub, on) {
+    return '<button class="option" type="button" data-act="ob-equip" data-v="' + id + '" aria-pressed="' + on + '">' +
+      '<span class="o-big o-ic">' + EQI[id] + '</span><span class="o-t"><b>' + title + '</b><span>' + sub + '</span></span><span class="check">' + I.check + '</span></button>';
+  }
   function obReady() {
-    return { 1: !!OB.goal, 2: OB.push != null, 3: OB.pull != null, 4: OB.atr != null, 5: !!OB.days }[OB.step];
+    var q = obQuestions()[OB.qi];
+    return { goal: !!OB.goal, equip: true, push: OB.push != null, pull: OB.pull != null, atr: OB.atr != null, days: !!OB.days }[q];
+  }
+  function ladder(s) {
+    return '<div class="ladder">' + D.FAMILIES.map(function (f) {
+      var c = chain(f.id, s), e = curEx(f.id, s), k = c.indexOf(e);
+      return '<div class="ladder-row" style="--fc:' + f.color + '">' + picto(f.id) + '<span class="t"><b>' + esc(e.name) + '</b><span>' + f.name + ' · niveau ' + (k + 1) + ' sur ' + c.length + '</span></span>' +
+        '<span class="steps" aria-hidden="true">' + c.slice(0, Math.min(c.length, 8)).map(function (_, j) { return '<i class="' + (j <= k ? 'on' : '') + '"></i>'; }).join('') + '</span></div>';
+    }).join('') + '</div>';
   }
   function renderOnboarding() {
-    var st = OB.step, html = '';
-    if (st === 0) {
+    var html = '';
+    if (OB.screen === 'welcome') {
       html = '<section class="view welcome"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div>' +
         '<h1 class="welcome-title">Plus fort que la <em>gravité</em></h1>' +
-        '<p class="muted" style="font-size:16px;max-width:34ch">Un programme de calisthenics qui grandit avec toi : des premières pompes jusqu’à l’ATR, un niveau après l’autre.</p>' +
+        '<p class="muted" style="font-size:16px;max-width:34ch">Un programme de calisthenics qui grandit avec toi : des premières pompes jusqu’à l’ATR, un niveau après l’autre. Avec ou sans matériel.</p>' +
         '<div class="ladder">' + D.FAMILIES.map(function (f, i) {
-          var n = fullChain(f.id).length, on = [3, 4, 1, 2, 0][i];
-          var ex = fullChain(f.id)[on];
-          return '<div class="ladder-row" style="--fc:' + f.color + '">' + picto(f.id) + '<span class="t"><b>' + f.name + '</b><span>' + n + ' niveaux, jusqu’à ' + esc(fullChain(f.id)[n - 1].name.toLowerCase()) + '</span></span>' +
-            '<span class="steps" aria-hidden="true">' + fullChain(f.id).slice(0, 6).map(function (_, k) { return '<i class="' + (k <= on ? 'on' : '') + '"></i>'; }).join('') + '</span></div>';
+          var full = fullChain(f.id), on = [3, 4, 1, 2, 0][i];
+          return '<div class="ladder-row" style="--fc:' + f.color + '">' + picto(f.id) + '<span class="t"><b>' + f.name + '</b><span>Jusqu’à ' + esc(full[full.length - 1].name.toLowerCase()) + '</span></span>' +
+            '<span class="steps" aria-hidden="true">' + full.slice(0, 6).map(function (_, k) { return '<i class="' + (k <= on ? 'on' : '') + '"></i>'; }).join('') + '</span></div>';
         }).join('') + '</div>' +
         '<div class="feature-list">' +
-        '<div class="feature"><span class="ic">' + I.target + '</span><div><b>Un programme à ton niveau</b><span>Trois questions, et tes séances sont prêtes.</span></div></div>' +
-        '<div class="feature"><span class="ic">' + I.up + '</span><div><b>Des objectifs qui montent</b><span>Réussis tes séries : la séance suivante est un peu plus dure.</span></div></div>' +
-        '<div class="feature"><span class="ic">' + I.trophy + '</span><div><b>Ta progression sous les yeux</b><span>Paliers débloqués, séries de semaines, records et badges.</span></div></div></div>' +
+        '<div class="feature"><span class="ic">' + I.target + '</span><div><b>Un programme à ton niveau</b><span>Quelques questions, et tes séances sont prêtes, adaptées à ton matériel.</span></div></div>' +
+        '<div class="feature"><span class="ic">' + I.trend + '</span><div><b>Ton évolution estimée</b><span>Combien de pompes, de tractions et de secondes en ATR dans 3, 6 ou 12 mois.</span></div></div>' +
+        '<div class="feature"><span class="ic">' + I.trophy + '</span><div><b>Ta progression sous les yeux</b><span>Paliers débloqués, semaines tenues, records et badges.</span></div></div></div>' +
         '<div style="display:grid;gap:10px"><button class="btn primary lg block" type="button" data-act="ob-next">Créer mon programme</button>' +
         '<button class="btn block ghost" type="button" data-act="demo-start">Voir un exemple</button></div></section>';
       return html;
     }
-    if (st === 6) {
-      var s = S;
+    if (OB.screen === 'ready') {
+      var s = S, sim = simulate(s, 52), first = milestones(sim, 52)[0];
       html = '<section class="view ob"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div><div><p class="eyebrow" style="color:var(--violet-2)">C’est prêt</p><h1 class="title-xl" style="margin-top:6px">Ton programme</h1>' +
-        '<p class="muted" style="margin-top:8px">' + s.profile.days + ' séances par semaine, objectif ' + D.GOALS[s.profile.goal].name.toLowerCase() + '. Voici ton point de départ :</p></div>' +
-        '<div class="ladder">' + D.FAMILIES.map(function (f) {
-          var c = chain(f.id, s), e = curEx(f.id, s), k = c.indexOf(e);
-          return '<div class="ladder-row" style="--fc:' + f.color + '">' + picto(f.id) + '<span class="t"><b>' + esc(e.name) + '</b><span>' + f.name + ' · niveau ' + (k + 1) + ' sur ' + c.length + '</span></span>' +
-            '<span class="steps" aria-hidden="true">' + c.slice(0, Math.min(c.length, 8)).map(function (_, j) { return '<i class="' + (j <= k ? 'on' : '') + '"></i>'; }).join('') + '</span></div>';
-        }).join('') + '</div>' +
-        '<p class="faint" style="font-size:13px">Tu pourras changer de niveau à tout moment depuis l’onglet Progrès.</p>' +
-        '<button class="btn primary lg block" type="button" data-act="ob-done">' + I.play + 'C’est parti</button></section>';
+        '<p class="muted" style="margin-top:8px">' + s.profile.days + ' séances par semaine, objectif ' + D.GOALS[s.profile.goal].name.toLowerCase() + '. Voici ton point de départ :</p></div>' + ladder(s) +
+        '<div class="card-hero" style="padding:18px"><p class="eyebrow" style="color:var(--violet-2)">Dans 3 mois, si tu tiens le rythme</p>' + teaserGrid(sim.snaps[13].cap) +
+        (first ? '<p class="teaser-next">' + I.trend + '<span>Première étape : <b>' + esc(first.txt) + '</b>, ' + atWeek(first.w) + '</span></p>' : '') + '</div>';
+      if (!has(s, 'bar')) {
+        var g = equipGains(s).filter(function (x) { return x.q.id === 'bar'; })[0];
+        html += '<p class="storage-note">' + EQI.bar + '<span>Sans barre, ton dos travaille avec ' + esc(chain('pull', s)[0].name.toLowerCase()) + ' et ses variantes.' +
+          (g ? ' Une barre de traction ajouterait ' + g.ex.length + ' niveaux, à activer dans ton profil quand tu veux.' : '') + '</span></p>';
+      }
+      html += '<button class="btn primary lg block" type="button" data-act="ob-done">' + I.play + 'C’est parti</button></section>';
       return html;
     }
-    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div><span class="faint num" style="font-size:13px">' + st + ' / 5</span></div>' +
-      '<div class="ob-steps">' + [1, 2, 3, 4, 5].map(function (k) { return '<i class="' + (k <= st ? 'on' : '') + '"></i>'; }).join('') + '</div>';
-    if (st === 1) {
+    var qs = obQuestions(), q = qs[OB.qi], last = OB.qi === qs.length - 1;
+    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div><span class="faint num" style="font-size:13px">' + (OB.qi + 1) + ' / ' + qs.length + '</span></div>' +
+      '<div class="ob-steps" style="grid-template-columns:repeat(' + qs.length + ',1fr)">' + qs.map(function (_, k) { return '<i class="' + (k <= OB.qi ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    if (q === 'goal') {
       html += '<div><h1 class="title-lg">Faisons connaissance</h1><p class="muted" style="margin-top:6px">Ton prénom est facultatif. Ton objectif règle le nombre de séries et les temps de repos.</p></div>' +
         '<div class="field"><label for="ob-name">Prénom</label><input id="ob-name" class="input" maxlength="30" autocomplete="given-name" placeholder="Ton prénom" value="' + esc(OB.name) + '"></div>' +
-        '<div class="options" data-group="goal">' + Object.keys(D.GOALS).map(function (k, i) {
+        '<div class="options">' + Object.keys(D.GOALS).map(function (k, i) {
           var g = D.GOALS[k];
           return optBtn('goal', k, ['F', 'M', 'E'][i], g.name, g.desc + ' ' + g.sets + ' séries, ' + g.rest + ' s de repos.');
         }).join('') + '</div>';
-    } else if (st === 2) {
+    } else if (q === 'equip') {
+      var none = !D.EQUIP.some(function (x) { return OB.equip[x.id]; });
+      html += '<div><h1 class="title-lg">Qu’as-tu à disposition ?</h1><p class="muted" style="margin-top:6px">Coche tout ce que tu peux utiliser. Sans rien, ton programme reste complet : le sol, un mur et une porte suffisent.</p></div>' +
+        '<div class="options">' + D.EQUIP.map(function (x) { return equipOpt(x.id, x.name, x.desc, !!OB.equip[x.id]); }).join('') +
+        equipOpt('none', 'Rien de tout ça', 'Programme 100 % poids du corps', none) + '</div>';
+    } else if (q === 'push') {
       html += '<div><h1 class="title-lg">Combien de pompes d’affilée ?</h1><p class="muted" style="margin-top:6px">Des pompes classiques, poitrine près du sol, sans t’arrêter.</p></div>' +
-        '<div class="options" data-group="push">' + PUSH_OPTS.map(function (o) { return optBtn('push', o[0], o[1], o[2]); }).join('') + '</div>';
-    } else if (st === 3) {
-      html += '<div><h1 class="title-lg">Et les tractions ?</h1><p class="muted" style="margin-top:6px">Sans barre, tu travailleras le dos avec des rowings sous une table solide.</p></div>' +
-        '<div class="options" data-group="pull">' + PULL_OPTS.map(function (o) { return optBtn('pull', o[0], o[1], o[2]); }).join('') + '</div>';
-    } else if (st === 4) {
+        '<div class="options">' + PUSH_OPTS.map(function (o) { return optBtn('push', o[0], o[1], o[2]); }).join('') + '</div>';
+    } else if (q === 'pull') {
+      html += '<div><h1 class="title-lg">Et les tractions ?</h1><p class="muted" style="margin-top:6px">Combien de tractions complètes d’affilée, bras tendus en bas, menton au-dessus de la barre.</p></div>' +
+        '<div class="options">' + PULL_OPTS.map(function (o) { return optBtn('pull', o[0], o[1], o[2]); }).join('') + '</div>';
+    } else if (q === 'atr') {
       html += '<div><h1 class="title-lg">Ton niveau en ATR</h1><p class="muted" style="margin-top:6px">L’ATR, c’est l’équilibre sur les mains. On le construit pas à pas.</p></div>' +
-        '<div class="options" data-group="atr">' + ATR_OPTS.map(function (o) { return optBtn('atr', o[0], o[1], o[2], o[3]); }).join('') + '</div>';
-    } else if (st === 5) {
+        '<div class="options">' + ATR_OPTS.map(function (o) { return optBtn('atr', o[0], o[1], o[2], o[3]); }).join('') + '</div>';
+    } else if (q === 'days') {
       html += '<div><h1 class="title-lg">Combien de séances par semaine ?</h1><p class="muted" style="margin-top:6px">Mieux vaut 3 séances tenues que 6 abandonnées. Tu pourras changer ensuite.</p></div>' +
-        '<div class="options" data-group="days">' + [2, 3, 4, 5, 6].map(function (n) {
+        '<div class="options">' + [2, 3, 4, 5, 6].map(function (n) {
           var names = D.WEEK_PLANS[n].map(function (t) { return D.TEMPLATES[t].name; }).join(', ');
           return optBtn('days', n, n, n === 3 ? 'Recommandé pour débuter' : n <= 2 ? 'Le minimum efficace' : n >= 5 ? 'Pour les motivés' : 'Rythme soutenu', names);
         }).join('') + '</div>';
     }
     html += '<div class="ob-nav"><button class="btn icon" type="button" data-act="ob-back" aria-label="Retour" style="transform:scaleX(-1)">' + I.chevR + '</button>' +
-      '<button class="btn primary lg" type="button" data-act="' + (st === 5 ? 'ob-finish' : 'ob-next') + '" id="ob-next"' + (obReady() ? '' : ' disabled') + '>' + (st === 5 ? 'Générer mon programme' : 'Continuer') + '</button></div></section>';
+      '<button class="btn primary lg" type="button" data-act="ob-next" id="ob-next"' + (obReady() ? '' : ' disabled') + '>' + (last ? 'Générer mon programme' : 'Continuer') + '</button></div></section>';
     return html;
   }
   function applyOnboarding() {
@@ -817,12 +1180,16 @@
     s.profile.name = OB.name.trim().slice(0, 30);
     s.profile.goal = OB.goal;
     s.profile.days = +OB.days;
-    s.profile.bar = OB.pull !== 'nobar';
+    s.profile.equip = Object.assign({}, OB.equip);
     s.prog.push = ['pompes-inclinees', 'pompes', 'pompes-diamant', 'pompes-declinees'][pi];
     s.prog.legs = ['squats', 'fentes', 'squats-bulgares', 'squats-sautes'][pi];
     s.prog.core = ['planche', 'genoux-sol', 'hollow', 'jambes-sol'][pi];
-    s.prog.pull = { nobar: 'rowing-incline', '0': 'rowing-australien', '1': 'chin-ups', '2': 'tractions', '3': 'tractions-archer' }[OB.pull];
+    s.prog.pull = OB.equip.bar
+      ? { '0': 'rowing-australien', '1': 'chin-ups', '2': 'tractions', '3': 'tractions-archer' }[OB.pull]
+      : ['superman', 'rowing-serviette', 'rowing-australien', 'rowing-pieds'][pi];
     s.prog.atr = { never: 'pompes-pike', wall: 'atr-mur', free: 'atr-libre' }[OB.atr];
+    // Fige le point de départ sur un exercice réellement disponible.
+    D.FAMILIES.forEach(function (f) { s.prog[f.id] = curEx(f.id, s).id; });
     if (!s.createdAt) s.createdAt = Date.now();
     s.onboarded = true;
     save();
@@ -855,14 +1222,17 @@
 
   function exSheet(id) {
     var e = EXM[id], f = FAM[e.f], c = chain(e.f, S), cur = curEx(e.f, S), idx = c.indexOf(e), ci = c.indexOf(cur), next = c[idx + 1];
-    var g = D.GOALS[S.profile.goal];
-    var status = idx < 0 ? 'Nécessite une barre de traction' : idx < ci ? 'Niveau acquis' : idx === ci ? 'Ton niveau actuel' : 'Pas encore débloqué';
+    var g = D.GOALS[S.profile.goal], miss = missing(e, S);
+    var status = idx < 0 ? 'Nécessite : ' + miss.map(equipName).join(' + ') : idx < ci ? 'Niveau acquis' : idx === ci ? 'Ton niveau actuel' : 'Pas encore débloqué';
+    var w = idx > ci ? unlockWeeks(simulate(S, 52))[e.id] : null;
     var html = '<div style="display:flex;gap:14px;align-items:center">' + picto(e.f, 'lg') + '<div style="min-width:0"><p class="eyebrow">' + f.name + (idx >= 0 ? ' · niveau ' + (idx + 1) + ' sur ' + c.length : '') + '</p><h2 class="title-lg" style="margin-top:4px">' + esc(e.name) + '</h2></div></div>' +
       '<div class="summary-chips"><span class="chip violet">' + status + '</span><span class="chip">' + (e.type === 'time' ? 'Chrono' : 'Répétitions') + (e.side ? ', par côté' : '') + '</span>' +
-      (idx >= 0 ? '<span class="chip">Objectif ' + targetOf(e, S) + unitShort(e) + '</span>' : '') + '</div>' +
+      (idx >= 0 ? '<span class="chip">Objectif ' + targetOf(e, S) + unitShort(e) + '</span>' : '') +
+      (w != null ? '<span class="chip">' + I.trend + 'Estimé ' + atWeek(w) + '</span>' : '') + '</div>' +
       '<div class="cues">' + e.cues.map(function (q) { return '<div>' + I.check + '<span>' + esc(q) + '</span></div>'; }).join('') + '</div>' +
-      '<p class="muted" style="font-size:14px">' + (next ? 'Pour débloquer <b>' + esc(next.name) + '</b> : tiens ' + e.unlock + unitShort(e) + ' sur tes ' + g.sets + ' séries principales.' : idx >= 0 ? 'C’est le dernier niveau de cette famille. Continue de monter l’objectif.' : 'Active la barre de traction dans ton profil pour ce niveau.') + '</p>' +
+      '<p class="muted" style="font-size:14px">' + (idx < 0 ? 'Ajoute ce matériel dans ton profil pour intégrer ce niveau à ton parcours.' : next ? 'Pour débloquer <b>' + esc(next.name) + '</b> : tiens ' + e.unlock + unitShort(e) + ' sur tes ' + g.sets + ' séries principales.' : 'C’est le dernier niveau de cette famille avec ton matériel. Continue de monter l’objectif.') + '</p>' +
       '<div class="sheet-actions">' + (idx >= 0 && idx !== ci ? '<button class="btn primary block" type="button" data-act="set-level" data-id="' + e.id + '">' + (idx < ci ? 'Revenir à ce niveau' : 'Je maîtrise déjà : passer à ce niveau') + '</button>' : '') +
+      (idx < 0 ? '<button class="btn primary block" type="button" data-act="nav" data-view="profil">Gérer mon matériel</button>' : '') +
       '<button class="btn block ghost" type="button" data-act="sheet-close">Fermer</button></div>';
     openSheet(html, e.name);
   }
@@ -915,7 +1285,7 @@
     if (!el || el.disabled) return;
     var act = el.getAttribute('data-act');
     // Laisse la goutte de verre s'afficher avant de changer d'écran.
-    var delayed = /^(start|resume|nav|ob-next|ob-back|ob-finish|ob-done|demo-start|demo-exit|pl-next|pl-set-done|pl-skip|pl-finish|pl-exit|pl-hold-start)$/.test(act) && el.matches(LIQUID) && !reduceMotion;
+    var delayed = /^(start|resume|nav|go-traj|ob-next|ob-back|ob-done|demo-start|demo-exit|pl-next|pl-set-done|pl-skip|pl-finish|pl-exit|pl-hold-start)$/.test(act) && el.matches(LIQUID) && !reduceMotion;
     if (delayed) setTimeout(function () { handle(act, el); }, 120); else handle(act, el);
   });
 
@@ -923,7 +1293,12 @@
     var ds = el.dataset;
     if (act.indexOf('pl-') === 0) return playerAction(act, el);
     switch (act) {
-      case 'nav': go(ds.view); break;
+      case 'nav': closeSheet(); go(ds.view); break;
+      case 'go-traj': ui.progTab = 'trajectoire'; go('programme'); break;
+      case 'prog-tab': ui.progTab = ds.v; render(); break;
+      case 'traj-h': ui.h = +ds.v; ui.msAll = false; render(); break;
+      case 'traj-metric': ui.metric = ds.v; render(); break;
+      case 'ms-toggle': ui.msAll = !ui.msAll; render(); break;
       case 'start': startWorkout(ds.tpl); break;
       case 'resume': var r = readResume(); if (r) startWorkout(r.sess.tpl, r); break;
       case 'resume-drop': clearResume(); render(); break;
@@ -951,16 +1326,18 @@
         S.profile.days = +ds.v; save();
         $$('[data-act="pf-days"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === el)); });
         break;
-      case 'pf-bar':
-        S.profile.bar = !S.profile.bar; save(); el.setAttribute('aria-checked', String(S.profile.bar));
-        toast(S.profile.bar ? 'Exercices à la barre activés' : 'Programme adapté sans barre');
+      case 'pf-equip':
+        S.profile.equip = Object.assign({}, S.profile.equip);
+        S.profile.equip[ds.id] = !S.profile.equip[ds.id];
+        save(); el.setAttribute('aria-checked', String(S.profile.equip[ds.id]));
+        toast(EQ[ds.id].name + (S.profile.equip[ds.id] ? ' ajouté : programme adapté' : ' retiré : programme adapté'));
         break;
       case 'pf-sound':
         S.profile.sound = !S.profile.sound; save(); el.setAttribute('aria-checked', String(S.profile.sound));
         if (S.profile.sound) { ensureAudio(); beep(880, 0.12); }
         break;
       case 'retake':
-        OB = { active: true, step: 2, name: S.profile.name, goal: S.profile.goal, push: null, pull: null, atr: null, days: S.profile.days, retake: true };
+        OB = newOB({ active: true, screen: 'q', qi: 1, name: S.profile.name, goal: S.profile.goal, equip: Object.assign({}, S.profile.equip), days: S.profile.days, retake: true });
         render(); window.scrollTo(0, 0); break;
       case 'export':
         openSheet('<h2 class="title-lg">Exporter ma progression</h2><p class="muted" style="font-size:14px">Copie ce texte et garde-le en lieu sûr. Tu pourras le coller dans Importer sur un autre appareil.</p>' +
@@ -992,7 +1369,7 @@
         break;
       case 'do-reset':
         REAL = S = blankState(); demo = false; clearResume(); save(); closeSheet();
-        OB = { active: false, step: 0, name: '', goal: null, push: null, pull: null, atr: null, days: 3, retake: false };
+        OB = newOB();
         render(); window.scrollTo(0, 0);
         break;
 
@@ -1000,7 +1377,7 @@
         demo = true; S = makeDemo(); view = 'accueil'; render(); window.scrollTo(0, 0); toast('Exemple chargé : 10 semaines fictives'); break;
       case 'demo-exit':
         demo = false; S = REAL;
-        if (!S.onboarded) OB = { active: false, step: 1, name: '', goal: null, push: null, pull: null, atr: null, days: 3, retake: false };
+        if (!S.onboarded) OB = newOB({ active: true, screen: 'q', qi: 0 });
         render(); window.scrollTo(0, 0); break;
 
       case 'ob-pick':
@@ -1008,17 +1385,26 @@
         $$('[data-act="ob-pick"][data-k="' + ds.k + '"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === el)); });
         var nb = $('#ob-next'); if (nb) nb.disabled = !obReady();
         break;
+      case 'ob-equip':
+        if (ds.v === 'none') D.EQUIP.forEach(function (x) { OB.equip[x.id] = false; });
+        else OB.equip[ds.v] = !OB.equip[ds.v];
+        var none = !D.EQUIP.some(function (x) { return OB.equip[x.id]; });
+        $$('[data-act="ob-equip"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.v === 'none' ? none : !!OB.equip[x.dataset.v])); });
+        break;
       case 'ob-next':
-        if (OB.step > 0 && !obReady()) break;
-        OB.active = true; OB.step = Math.min(5, OB.step + 1); render(); window.scrollTo(0, 0); break;
+        if (OB.screen === 'welcome') { OB.active = true; OB.screen = 'q'; OB.qi = 0; }
+        else {
+          if (!obReady()) break;
+          if (OB.qi < obQuestions().length - 1) OB.qi++;
+          else { applyOnboarding(); OB.screen = 'ready'; }
+        }
+        render(); window.scrollTo(0, 0); break;
       case 'ob-back':
-        if (OB.retake && OB.step <= 2) { OB.active = false; render(); break; }
-        OB.step = Math.max(0, OB.step - 1); if (OB.step === 0) OB.active = false; render(); break;
-      case 'ob-finish':
-        if (!obReady()) break;
-        applyOnboarding(); OB.step = 6; OB.active = true; render(); window.scrollTo(0, 0); break;
+        if (OB.retake && OB.qi <= 1) { OB = newOB(); render(); break; }
+        if (OB.qi === 0) OB = newOB(); else OB.qi--;
+        render(); break;
       case 'ob-done':
-        OB.active = false; OB.step = 0; view = 'accueil'; render(); window.scrollTo(0, 0); break;
+        OB = newOB(); view = 'accueil'; render(); window.scrollTo(0, 0); break;
     }
   }
 

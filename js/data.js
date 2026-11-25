@@ -16,7 +16,7 @@ window.GRAVITE_DATA = (function () {
    * type : 'reps' (répétitions) ou 'time' (secondes)
    * start : objectif de départ quand le niveau est débloqué
    * unlock : objectif à tenir sur toutes les séries pour débloquer le niveau suivant
-   * bar : nécessite une barre de traction
+   * req : matériel nécessaire ; skipIf : remplacé quand ce matériel est disponible
    * side : se compte par côté
    */
   var EX = [
@@ -29,10 +29,14 @@ window.GRAVITE_DATA = (function () {
       cues: ['Genoux au sol, hanches alignées avec le dos.', 'Poitrine près du sol, pousse fort en remontant.'] },
     { id: 'pompes', f: 'push', name: 'Pompes classiques', type: 'reps', start: 5, unlock: 15,
       cues: ['Planche solide : fessiers et abdos serrés.', 'Poitrine à un poing du sol, bras tendus en haut.'] },
+    { id: 'dips-chaise', f: 'push', name: 'Dips sur chaise', type: 'reps', start: 6, unlock: 15, req: ['chair'],
+      cues: ['Mains au bord d’une chaise calée contre un mur, jambes fléchies devant toi.', 'Descends jusqu’à 90° aux coudes, épaules basses.'] },
     { id: 'pompes-diamant', f: 'push', name: 'Pompes diamant', type: 'reps', start: 5, unlock: 15,
       cues: ['Pouces et index forment un losange sous la poitrine.', 'Coudes serrés le long du corps : les triceps travaillent.'] },
-    { id: 'pompes-declinees', f: 'push', name: 'Pompes déclinées', type: 'reps', start: 6, unlock: 15,
+    { id: 'pompes-declinees', f: 'push', name: 'Pompes déclinées', type: 'reps', start: 6, unlock: 15, req: ['chair'],
       cues: ['Pieds surélevés sur une chaise ou un banc.', 'Bassin aligné, ne le laisse pas tomber.'] },
+    { id: 'dips', f: 'push', name: 'Dips aux barres', type: 'reps', start: 4, unlock: 12, req: ['dips'],
+      cues: ['Bras tendus sur les barres, épaules basses et loin des oreilles.', 'Descends jusqu’à 90° aux coudes, buste légèrement penché.'] },
     { id: 'pompes-archer', f: 'push', name: 'Pompes archer', type: 'reps', start: 4, unlock: 10, side: true,
       cues: ['Mains très écartées, descends vers un bras pendant que l’autre reste tendu.', 'Alterne les côtés, compte par côté.'] },
     { id: 'pompes-pseudo', f: 'push', name: 'Pompes pseudo-planche', type: 'reps', start: 5, unlock: 12,
@@ -41,27 +45,43 @@ window.GRAVITE_DATA = (function () {
       cues: ['Pieds écartés, main sous la poitrine.', 'Gainage maximal pour ne pas tourner le buste.'] },
 
     // Tirage
-    { id: 'suspension', f: 'pull', name: 'Suspension à la barre', type: 'time', start: 15, unlock: 45, bar: true,
+    { id: 'superman', f: 'pull', name: 'Superman', type: 'time', start: 15, unlock: 40, skipIf: ['bar', 'table', 'band'],
+      cues: ['À plat ventre, bras tendus devant toi.', 'Décolle bras, poitrine et jambes, serre les omoplates, regard vers le sol.'] },
+    { id: 'ytw', f: 'pull', name: 'Y-T-W au sol', type: 'reps', start: 6, unlock: 12, skipIf: ['bar', 'table'],
+      cues: ['À plat ventre, front au sol, pouces vers le plafond.', 'Lève les bras en Y, puis en T, puis en W : les trois comptent pour une répétition.'] },
+    { id: 'rowing-serviette', f: 'pull', name: 'Rowing serviette à la porte', type: 'reps', start: 8, unlock: 15, skipIf: ['table', 'band'],
+      cues: ['Passe une serviette solide autour des deux poignées d’une porte ouverte, pieds de chaque côté du bord.', 'Penche-toi en arrière bras tendus, puis tire la poitrine vers la porte.'] },
+    { id: 'suspension', f: 'pull', name: 'Suspension à la barre', type: 'time', start: 15, unlock: 45, req: ['bar'],
       cues: ['Prise en pronation, bras tendus, épaules engagées.', 'Respire calmement, ne te balance pas.'] },
-    { id: 'rowing-incline', f: 'pull', name: 'Rowing incliné', type: 'reps', start: 8, unlock: 15,
-      cues: ['Sous une table solide ou une barre à hauteur de poitrine, corps incliné.', 'Tire la poitrine vers la barre, omoplates serrées.'] },
-    { id: 'rowing-australien', f: 'pull', name: 'Rowing australien', type: 'reps', start: 6, unlock: 15,
-      cues: ['Barre ou table à hauteur de hanches, corps presque horizontal.', 'Corps droit, poitrine jusqu’à la barre.'] },
-    { id: 'rowing-pieds', f: 'pull', name: 'Rowing pieds surélevés', type: 'reps', start: 6, unlock: 12,
-      cues: ['Pieds posés sur une chaise, corps parallèle au sol.', 'Marque une pause d’une seconde en haut.'] },
-    { id: 'tractions-scap', f: 'pull', name: 'Tractions scapulaires', type: 'reps', start: 6, unlock: 12, bar: true,
+    { id: 'rowing-elastique', f: 'pull', name: 'Rowing à l’élastique', type: 'reps', start: 10, unlock: 20, req: ['band'], skipIf: ['table'],
+      cues: ['Élastique accroché à hauteur de poitrine (poignée de porte, poteau).', 'Tire les coudes vers l’arrière et serre les omoplates une seconde.'] },
+    { id: 'rowing-incline', f: 'pull', name: 'Rowing australien genoux fléchis', type: 'reps', start: 8, unlock: 15, req: ['table'],
+      cues: ['Allongé sous une table solide (ou une barre basse), agrippe le bord, genoux fléchis et pieds au sol.', 'Tire la poitrine vers la table, omoplates serrées.'] },
+    { id: 'rowing-australien', f: 'pull', name: 'Rowing australien', type: 'reps', start: 6, unlock: 15, req: ['table'],
+      cues: ['Sous la table ou la barre basse, jambes tendues, corps gainé.', 'Poitrine jusqu’au bord, descente contrôlée.'] },
+    { id: 'rowing-serviette-uni', f: 'pull', name: 'Rowing serviette à un bras', type: 'reps', start: 5, unlock: 12, side: true, skipIf: ['bar'],
+      cues: ['Serviette autour d’une poignée de porte ouverte, une seule main, pieds près du bord.', 'Bassin face à la porte, sans tourner le buste.'] },
+    { id: 'tirage-elastique', f: 'pull', name: 'Tirage vertical à l’élastique', type: 'reps', start: 10, unlock: 20, req: ['band'], skipIf: ['bar'],
+      cues: ['Élastique coincé en haut d’une porte fermée, à genoux face à elle.', 'Tire les coudes vers les hanches, poitrine sortie.'] },
+    { id: 'rowing-pieds', f: 'pull', name: 'Rowing pieds surélevés', type: 'reps', start: 6, unlock: 12, req: ['table', 'chair'],
+      cues: ['Sous la table, pieds posés sur une chaise, corps parallèle au sol.', 'Marque une pause d’une seconde en haut.'] },
+    { id: 'rowing-archer', f: 'pull', name: 'Rowing archer', type: 'reps', start: 4, unlock: 10, side: true, req: ['table'],
+      cues: ['Sous la table, mains très écartées.', 'Tire vers une main pendant que l’autre bras reste tendu.'] },
+    { id: 'tractions-scap', f: 'pull', name: 'Tractions scapulaires', type: 'reps', start: 6, unlock: 12, req: ['bar'],
       cues: ['Bras tendus, monte uniquement en abaissant les omoplates.', 'Petit mouvement, contrôle total.'] },
-    { id: 'tractions-negatives', f: 'pull', name: 'Tractions négatives', type: 'reps', start: 3, unlock: 8, bar: true,
-      cues: ['Saute pour placer le menton au-dessus de la barre.', 'Descends le plus lentement possible, environ 5 secondes.'] },
-    { id: 'chin-ups', f: 'pull', name: 'Tractions supination', type: 'reps', start: 3, unlock: 8, bar: true,
+    { id: 'tractions-negatives', f: 'pull', name: 'Tractions négatives', type: 'reps', start: 3, unlock: 8, req: ['bar'],
+      cues: ['Saute ou monte sur une chaise pour placer le menton au-dessus de la barre.', 'Descends le plus lentement possible, environ 5 secondes.'] },
+    { id: 'tractions-elastique', f: 'pull', name: 'Tractions assistées à l’élastique', type: 'reps', start: 4, unlock: 10, req: ['bar', 'band'],
+      cues: ['Élastique noué à la barre, un pied ou un genou dans la boucle.', 'Amplitude complète : bras tendus en bas, menton au-dessus en haut.'] },
+    { id: 'chin-ups', f: 'pull', name: 'Tractions supination', type: 'reps', start: 3, unlock: 8, req: ['bar'],
       cues: ['Paumes vers toi, mains à largeur d’épaules.', 'Menton au-dessus de la barre, descente contrôlée.'] },
-    { id: 'tractions', f: 'pull', name: 'Tractions pronation', type: 'reps', start: 4, unlock: 12, bar: true,
+    { id: 'tractions', f: 'pull', name: 'Tractions pronation', type: 'reps', start: 4, unlock: 12, req: ['bar'],
       cues: ['Paumes vers l’avant, mains un peu plus larges que les épaules.', 'Pas d’élan : amène la poitrine vers la barre.'] },
-    { id: 'tractions-archer', f: 'pull', name: 'Tractions archer', type: 'reps', start: 3, unlock: 8, bar: true, side: true,
+    { id: 'tractions-archer', f: 'pull', name: 'Tractions archer', type: 'reps', start: 3, unlock: 8, req: ['bar'], side: true,
       cues: ['Prise très large, tire vers une main en tendant l’autre bras.', 'Alterne les côtés, compte par côté.'] },
-    { id: 'tractions-explosives', f: 'pull', name: 'Tractions explosives', type: 'reps', start: 3, unlock: 8, bar: true,
+    { id: 'tractions-explosives', f: 'pull', name: 'Tractions explosives', type: 'reps', start: 3, unlock: 8, req: ['bar'],
       cues: ['Tire le plus vite possible, barre vers le bas du torse.', 'C’est la base du muscle-up.'] },
-    { id: 'muscle-up', f: 'pull', name: 'Muscle-up', type: 'reps', start: 1, unlock: 6, bar: true,
+    { id: 'muscle-up', f: 'pull', name: 'Muscle-up', type: 'reps', start: 1, unlock: 6, req: ['bar'],
       cues: ['Tirage explosif, puis bascule des poignets par-dessus la barre.', 'Termine bras tendus au-dessus de la barre.'] },
 
     // Jambes
@@ -71,7 +91,7 @@ window.GRAVITE_DATA = (function () {
       cues: ['Pieds à largeur d’épaules, genoux dans l’axe des pieds.', 'Dos droit, pousse dans les talons.'] },
     { id: 'fentes', f: 'legs', name: 'Fentes alternées', type: 'reps', start: 8, unlock: 15, side: true,
       cues: ['Grand pas en avant, le genou arrière frôle le sol.', 'Buste droit, alterne les jambes.'] },
-    { id: 'squats-bulgares', f: 'legs', name: 'Squats bulgares', type: 'reps', start: 6, unlock: 12, side: true,
+    { id: 'squats-bulgares', f: 'legs', name: 'Squats bulgares', type: 'reps', start: 6, unlock: 12, side: true, req: ['chair'],
       cues: ['Pied arrière posé sur une chaise.', 'Descends sur la jambe avant, genou stable.'] },
     { id: 'squats-sautes', f: 'legs', name: 'Squats sautés', type: 'reps', start: 8, unlock: 15,
       cues: ['Descends en squat puis saute de toutes tes forces.', 'Atterris en douceur, genoux fléchis.'] },
@@ -91,16 +111,16 @@ window.GRAVITE_DATA = (function () {
       cues: ['Bas du dos plaqué au sol, bras et jambes tendus et décollés.', 'Plus les jambes sont basses, plus c’est dur.'] },
     { id: 'jambes-sol', f: 'core', name: 'Relevés de jambes au sol', type: 'reps', start: 8, unlock: 15,
       cues: ['Jambes tendues, monte jusqu’à la verticale.', 'Redescends lentement sans toucher le sol.'] },
-    { id: 'genoux-suspendu', f: 'core', name: 'Relevés de genoux suspendu', type: 'reps', start: 6, unlock: 15, bar: true,
+    { id: 'genoux-suspendu', f: 'core', name: 'Relevés de genoux suspendu', type: 'reps', start: 6, unlock: 15, req: ['bar'],
       cues: ['Suspendu à la barre, monte les genoux à la poitrine.', 'Sans te balancer.'] },
     { id: 'lsit-groupe', f: 'core', name: 'L-sit groupé', type: 'time', start: 10, unlock: 25,
       cues: ['Mains au sol ou sur deux chaises, pousse fort dans les bras.', 'Genoux ramenés, fesses décollées.'] },
-    { id: 'jambes-suspendu', f: 'core', name: 'Relevés de jambes suspendu', type: 'reps', start: 5, unlock: 12, bar: true,
+    { id: 'jambes-suspendu', f: 'core', name: 'Relevés de jambes suspendu', type: 'reps', start: 5, unlock: 12, req: ['bar'],
       cues: ['Jambes tendues jusqu’à l’horizontale ou plus haut.', 'Descente lente et contrôlée.'] },
     { id: 'lsit', f: 'core', name: 'L-sit', type: 'time', start: 5, unlock: 20,
       cues: ['Jambes tendues à l’horizontale, épaules basses.', 'Pointes de pieds tendues.'] },
     { id: 'dragon-flag', f: 'core', name: 'Dragon flag', type: 'reps', start: 2, unlock: 8,
-      cues: ['Allongé sur un banc, agrippe-le derrière la tête.', 'Corps rigide, descends lentement comme une planche.'] },
+      cues: ['Allongé au sol ou sur un banc, agrippe derrière ta tête un meuble lourd ou le banc.', 'Corps rigide, descends lentement comme une planche.'] },
 
     // ATR & équilibre
     { id: 'pompes-pike', f: 'atr', name: 'Pompes pike', type: 'reps', start: 5, unlock: 12,
@@ -109,7 +129,7 @@ window.GRAVITE_DATA = (function () {
       cues: ['Dos au mur en position de pompe, monte les pieds sur le mur en rapprochant les mains.', 'Va aussi haut que possible, redescends en contrôle.'] },
     { id: 'atr-mur', f: 'atr', name: 'ATR face au mur', type: 'time', start: 15, unlock: 45,
       cues: ['Ventre face au mur, mains à 10-20 cm du mur.', 'Bras tendus, pousse les épaules vers les oreilles.'] },
-    { id: 'pike-sureleve', f: 'atr', name: 'Pompes pike surélevées', type: 'reps', start: 4, unlock: 10,
+    { id: 'pike-sureleve', f: 'atr', name: 'Pompes pike surélevées', type: 'reps', start: 4, unlock: 10, req: ['chair'],
       cues: ['Pieds sur une chaise, hanches au-dessus des épaules.', 'Descends la tête entre les mains.'] },
     { id: 'touchers-epaule', f: 'atr', name: 'ATR au mur, touchers d’épaule', type: 'reps', start: 4, unlock: 10, side: true,
       cues: ['En ATR face au mur, décolle une main pour toucher l’épaule opposée.', 'Transfère le poids lentement.'] },
@@ -119,6 +139,18 @@ window.GRAVITE_DATA = (function () {
       cues: ['Corps aligné, regard entre les mains.', 'Corrige avec les doigts et les poignets.'] },
     { id: 'hspu', f: 'atr', name: 'Pompes en ATR au mur', type: 'reps', start: 2, unlock: 8,
       cues: ['En ATR dos au mur, descends la tête vers le sol.', 'Place un coussin sous la tête au début.'] }
+  ];
+
+  /*
+   * Matériel. Chaque exercice peut demander du matériel (req, tous requis)
+   * ou disparaître quand un meilleur matériel est disponible (skipIf, au moins un).
+   */
+  var EQUIP = [
+    { id: 'bar',   name: 'Barre de traction',            desc: 'Tractions, muscle-up, relevés de jambes suspendu' },
+    { id: 'table', name: 'Table solide',                 desc: 'Rowings allongé dessous (ou une barre basse)' },
+    { id: 'chair', name: 'Chaise ou banc stable',        desc: 'Dips, pompes déclinées, squats bulgares' },
+    { id: 'dips',  name: 'Barres à dips ou parallettes', desc: 'Dips aux barres' },
+    { id: 'band',  name: 'Élastiques de musculation',    desc: 'Rowings et tractions assistées' }
   ];
 
   /* Objectifs : séries, repos, et vitesse de progression. */
@@ -197,6 +229,6 @@ window.GRAVITE_DATA = (function () {
     'La gravité ne lâche rien. Toi non plus.'
   ];
 
-  return { FAMILIES: FAMILIES, EX: EX, GOALS: GOALS, TEMPLATES: TEMPLATES, WEEK_PLANS: WEEK_PLANS,
+  return { FAMILIES: FAMILIES, EX: EX, EQUIP: EQUIP, GOALS: GOALS, TEMPLATES: TEMPLATES, WEEK_PLANS: WEEK_PLANS,
            WARMUP: WARMUP, RANKS: RANKS, BADGES: BADGES, QUOTES: QUOTES };
 })();
