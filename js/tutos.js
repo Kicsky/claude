@@ -558,6 +558,7 @@ window.GraviteTuto = (function () {
     var info = INFO[id] || { err: [''] }, mode = 'good', playing = true, t0 = performance.now(), paused = 0, raf = null;
     var reduce = false;
     try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
+    if (opts.calm) reduce = true;
     if (reduce) playing = false;
     el.innerHTML = '<div class="tv' + (opts.mini ? ' mini' : '') + '" style="--fc:' + (opts.color || '#9d70ff') + '">' +
       '<svg viewBox="0 0 160 100" role="img" aria-label="Animation de l’exercice"><g class="tv-props"></g><path class="rope" d=""/>' +

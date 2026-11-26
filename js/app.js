@@ -77,6 +77,7 @@
     atr: '<path d="M3 28.2h26" stroke-opacity=".3"/><path d="M12.4 27.6 14 19.6M19.6 27.6 18 19.6M14 19.6h4M16 19.6v-9.2M16 10.4 14.6 3.4M16 10.4l1.4-7"/><circle cx="16" cy="23.4" r="2.2"/>'
   };
   var PIC = {}; Object.keys(PIC_BODY).forEach(function (k) { PIC[k] = pic(PIC_BODY[k]); });
+  I.eye = svg('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>');
   I.trend = svg('<path d="M3.5 17.5 9 12l4 4 7.5-8"/><path d="M15 8h5.5v5.5"/>');
   /* Icônes du matériel. */
   var EQI = {
@@ -198,6 +199,7 @@
     S.updatedAt = Date.now();
     Store.writeLocal(S);
     Store.queueRemote(S);
+    if (window.GraviteCloud && window.GraviteCloud.user()) window.GraviteCloud.queueSave(S);
   }
 
   /* ================= Logique du programme ================= */
@@ -585,6 +587,7 @@
   window.addEventListener('resize', function () { moveLens(false); });
 
   function render(animateLens) {
+    applyA11y();
     if (!S.onboarded || OB.active) {
       tabbar.hidden = true;
       appEl.classList.add('no-tabs');
@@ -669,6 +672,12 @@
       '<div class="stat"><div class="v">' + fmtInt(s.totals.sessions) + '</div><div class="l">séances terminées</div></div>' +
       '<div class="stat"><div class="v">' + fmtInt(s.totals.reps) + '</div><div class="l">répétitions au total</div></div></div>';
 
+    if (cloudOn() && !cloudUser() && !demo && s.totals.sessions >= 1 && !s.profile.nudgeOff) {
+      html += '<div class="card equip-tip"><span class="eq-ic">' + I.cloud + '</span><div><b>Ne perds pas ta progression</b>' +
+        '<p class="faint" style="font-size:13px">Crée un compte gratuit avec ton e-mail pour la retrouver sur tous tes appareils.</p>' +
+        '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="acc-open" data-v="signup">Créer un compte</button>' +
+        '<button class="btn ghost" type="button" data-act="nudge-off">Plus tard</button></div></div></div>';
+    }
     // Projection à 3 mois
     var ms = milestones(sim, 52)[0];
     html += '<div class="section-head"><h2>Dans 3 mois</h2><button class="link" type="button" data-act="go-traj">Voir mon planning</button></div>' +
@@ -990,7 +999,7 @@
     var W = 340, H = 170, L = 34, R = 6, T = 18, B = 24, max = niceMax(Math.max.apply(null, vals.map(function (x) { return x.v; })));
     var pw = W - L - R, ph = H - T - B, band = pw / vals.length, bw = Math.min(26, band * 0.58);
     var y = function (v) { return T + ph - (v / max) * ph; };
-    var out = '<div class="chart-wrap" data-tipwrap><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Répétitions par semaine sur 8 semaines">';
+    var out = '<div class="chart-wrap" data-tipwrap><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc('Répétitions par semaine : ' + vals.map(function (d, i) { return (i === vals.length - 1 ? 'cette semaine' : 'semaine du ' + fmtDate(d.w, { day: 'numeric', month: 'long' })) + ' ' + d.v; }).join(', ')) + '">';
     [0, 0.5, 1].forEach(function (f) {
       var v = max * f, yy = y(v);
       out += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/>';
@@ -1058,7 +1067,7 @@
         return '<button type="button" data-act="pf-days" data-v="' + n + '" aria-pressed="' + (p.days === n) + '">' + n + '</button>';
       }).join('') + '</div></div></div>';
 
-    html += '<div class="section-head"><h2>Mon matériel</h2></div><div class="card">' + D.EQUIP.map(function (q) {
+    html += '<div class="section-head"><h2>Mon matériel</h2></div><div class="card" id="equip-card">' + D.EQUIP.map(function (q) {
       return '<div class="toggle-row"><span class="t eq-t"><span class="eq-ic">' + EQI[q.id] + '</span><span><b>' + q.name + '</b><span>' + q.desc + '</span></span></span>' +
         '<button class="switch" type="button" role="switch" aria-label="' + q.name + '" aria-checked="' + has(s, q.id) + '" data-act="pf-equip" data-id="' + q.id + '"></button></div>';
     }).join('') + '</div>';
@@ -1069,11 +1078,13 @@
       '<div class="toggle-row"><span class="t"><b>Coach bavard</b><span>La mascotte te parle d’elle-même (touche-la pour l’entendre)</span></span>' +
       '<button class="switch" type="button" role="switch" aria-label="Coach bavard" aria-checked="' + (p.coach !== false) + '" data-act="pf-coach"></button></div></div>';
 
-    html += '<div class="card" style="display:grid;gap:10px"><button class="btn block" type="button" data-act="retake">' + I.refresh + 'Refaire le test de niveau</button>' +
+    html += accountCard() + a11yCard();
+    html += '<div class="card" style="display:grid;gap:10px"><button class="btn block" type="button" data-act="tour">' + I.play + 'Revoir la visite guidée</button>' +
+      '<button class="btn block" type="button" data-act="retake">' + I.refresh + 'Refaire le test de niveau</button>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn" type="button" data-act="export">' + I.copy + 'Exporter</button><button class="btn" type="button" data-act="import">Importer</button></div>' +
       '<button class="btn block danger ghost" type="button" data-act="reset">' + I.trash + 'Tout effacer</button></div>';
 
-    var cloud = Store.mode === 'cloud';
+    var cloud = Store.mode === 'cloud' || !!cloudUser();
     html += '<p class="storage-note">' + (cloud ? I.cloud : I.device) + '<span>' + (cloud ? 'Ta progression est enregistrée sur ton compte et sur cet appareil.' : 'Ta progression est enregistrée sur cet appareil. Utilise Exporter pour la garder ailleurs.') + '</span></p>';
     html += '<p class="faint" style="font-size:12px;text-align:center">Gravité · calisthenics au poids du corps. Échauffe-toi, écoute ton corps et arrête en cas de douleur.</p>';
     html += '</section>';
@@ -1128,7 +1139,8 @@
         '<div class="feature"><span class="ic">' + I.trend + '</span><div><b>Ton évolution estimée</b><span>Combien de pompes, de tractions et de secondes en ATR dans 3, 6 ou 12 mois.</span></div></div>' +
         '<div class="feature"><span class="ic">' + I.trophy + '</span><div><b>Ta progression sous les yeux</b><span>Paliers débloqués, semaines tenues, records et badges.</span></div></div></div>' +
         '<div style="display:grid;gap:10px"><button class="btn primary lg block" type="button" data-act="ob-next">Créer mon programme</button>' +
-        '<button class="btn block ghost" type="button" data-act="demo-start">Voir un exemple</button></div></section>';
+        '<button class="btn block ghost" type="button" data-act="demo-start">Voir un exemple</button>' +
+        (cloudOn() ? '<button class="link-btn" type="button" data-act="acc-open" data-v="login">J’ai déjà un compte : me connecter</button>' : '') + '</div></section>';
       return html;
     }
     if (OB.screen === 'ready') {
@@ -1203,6 +1215,7 @@
   /* ================= Feuilles modales & toasts ================= */
   function openSheet(html, label) {
     closeSheet();
+    sheetOpener = document.activeElement;
     var sc = document.createElement('div');
     sc.className = 'scrim';
     sc.id = 'sheet';
@@ -1212,7 +1225,13 @@
     var f = sc.querySelector('button, input, textarea');
     if (f) { try { f.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
   }
-  function closeSheet() { var s = $('#sheet'); if (s) s.remove(); }
+  function closeSheet() {
+    var s = $('#sheet');
+    if (!s) return;
+    s.remove();
+    if (sheetOpener && sheetOpener.isConnected) { try { sheetOpener.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    sheetOpener = null;
+  }
   var toastTimer = null;
   function toast(msg) {
     var t = $('#toast');
@@ -1338,6 +1357,42 @@
         save(); el.setAttribute('aria-checked', String(S.profile.equip[ds.id]));
         toast(EQ[ds.id].name + (S.profile.equip[ds.id] ? ' ajouté : programme adapté' : ' retiré : programme adapté'));
         break;
+      case 'tour': startTour(); break;
+      case 'tour-next':
+        if (!TOUR) break;
+        var tst = TOUR.steps[TOUR.i];
+        if (tst.wait && TOUR.target) TOUR.target.click(); else nextTour();
+        break;
+      case 'tour-skip': endTour(false); break;
+      case 'pf-a11y':
+        S.profile.a11y = Object.assign({}, a11y());
+        S.profile.a11y[ds.k] = !S.profile.a11y[ds.k];
+        save(); applyA11y(); el.setAttribute('aria-checked', String(S.profile.a11y[ds.k]));
+        if (ds.k === 'voice' && S.profile.a11y.voice) speak('Lecture à voix haute activée.');
+        break;
+      case 'acc-open': accountSheet(ds.v); break;
+      case 'pw-toggle':
+        var pwi = $('#acc-pw'), show = pwi.type === 'password';
+        pwi.type = show ? 'text' : 'password';
+        el.setAttribute('aria-pressed', String(show));
+        el.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        break;
+      case 'acc-logout':
+        window.GraviteCloud.signOut().then(function () { toast('Déconnecté. Ta progression reste sur cet appareil.'); render(); }, function (x) { toast(x.message); });
+        break;
+      case 'acc-delete':
+        openSheet('<h2 class="title-lg">Supprimer ton compte ?</h2><p class="muted">Ton compte et la progression enregistrée en ligne seront supprimés définitivement. La copie sur cet appareil est conservée.</p>' +
+          '<div class="sheet-actions"><button class="btn block danger" type="button" data-act="acc-delete-yes">' + I.trash + 'Oui, supprimer mon compte</button>' +
+          '<button class="btn primary block" type="button" data-act="sheet-close">Garder mon compte</button></div>', 'Supprimer le compte');
+        break;
+      case 'acc-delete-yes':
+        window.GraviteCloud.deleteAccount().then(function () { closeSheet(); toast('Compte supprimé'); render(); }, function (x) { closeSheet(); toast(x.message); });
+        break;
+      case 'conflict':
+        if (ds.v === 'cloud' && pendingRemote) adoptCloud(pendingRemote); else window.GraviteCloud.queueSave(REAL, true);
+        pendingRemote = null; closeSheet();
+        break;
+      case 'nudge-off': S.profile.nudgeOff = true; save(); render(); break;
       case 'pf-coach':
         S.profile.coach = S.profile.coach === false; save(); el.setAttribute('aria-checked', String(S.profile.coach));
         if (S.profile.coach) coachSay({ t: 'Super, je reste avec toi !', m: 'happy', a: 'hop' }, true); else if (coach) coach.hide();
@@ -1418,7 +1473,9 @@
         if (OB.qi === 0) OB = newOB(); else OB.qi--;
         render(); break;
       case 'ob-done':
-        OB = newOB(); view = 'accueil'; render(); window.scrollTo(0, 0); coachView(true); break;
+        OB = newOB(); view = 'accueil'; render(); window.scrollTo(0, 0);
+        if (!S.profile.tourDone) setTimeout(startTour, 700); else coachView(true);
+        break;
     }
   }
 
@@ -1549,6 +1606,7 @@
     writeResume();
     renderPlayer();
     coachStep();
+    playerSpeak();
   }
   function nextStep() { if (PL.i < PL.steps.length - 1) { PL.i++; enterStep(); } }
   function fmtClock(ms) { var t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + pad(t % 60); }
@@ -1766,7 +1824,7 @@
 
   /* Confettis violets à la fin d'une séance. */
   function confetti() {
-    if (reduceMotion) return;
+    if (calm()) return;
     var cv = document.createElement('canvas');
     cv.className = 'confetti';
     var dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1814,8 +1872,10 @@
       if (S.profile.coach === false) return;
       if (!urgent && Date.now() - lastAuto < (PL ? 3500 : 9000)) return;
     }
+    if (TOUR && !force) return;
     lastAuto = Date.now();
     coach.say(line.t, line.m, line.a);
+    if (!PL) speak(line.t);
   }
   function lc(t) { return t.charAt(0).toLowerCase() + t.slice(1); }
   function firstName() { return S.profile.name ? ' ' + S.profile.name : ''; }
@@ -1946,7 +2006,7 @@
   /* Tuto d'un exercice : mini vidéo, muscles, intérêt, points clés, erreurs. */
   function mountTuto(host, e, mini) {
     if (!host || !window.GraviteTuto) return null;
-    var ctl = window.GraviteTuto.mount(host, e.id, { color: FAM[e.f].color, mini: !!mini });
+    var ctl = window.GraviteTuto.mount(host, e.id, { color: FAM[e.f].color, mini: !!mini, calm: calm() });
     if (!mini) sheetTv = ctl;
     return ctl;
   }
@@ -1964,9 +2024,344 @@
       '<div class="tuto-sec"><h3>Erreurs à éviter</h3><ul class="errs">' + info.err.map(function (x) { return '<li>' + I.close + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul></div></div>';
   }
 
+  /* ================= Accessibilité ================= */
+  var sheetOpener = null;
+  function a11y() { return S.profile.a11y || {}; }
+  function calm() { return reduceMotion || !!a11y().calm; }
+  function applyA11y() {
+    var a = a11y(), r = document.documentElement;
+    r.lang = 'fr';
+    r.classList.toggle('a11y-large', !!a.large);
+    r.classList.toggle('a11y-contrast', !!a.contrast);
+    r.classList.toggle('a11y-calm', !!a.calm);
+  }
+  var voiceOk = 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
+  /* Lecture à voix haute (synthèse vocale du navigateur, en français). */
+  function speak(text) {
+    if (!voiceOk || !a11y().voice || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new window.SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR'; u.rate = 1.03;
+      var v = window.speechSynthesis.getVoices().filter(function (x) { return /^fr/i.test(x.lang); })[0];
+      if (v) u.voice = v;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* ignore */ }
+  }
+  function playerSpeak() {
+    if (!PL || !a11y().voice) return;
+    var st = curStep();
+    if (st.k === 'warm') speak('Échauffement. ' + D.WARMUP.map(function (w) { return w.name; }).join('. ') + '.');
+    else if (st.k === 'set') {
+      var it = PL.sess.items[st.i], e = it.ex;
+      speak(e.name + '. Série ' + (st.s + 1) + ' sur ' + it.sets + '. Objectif : ' + it.target + ' ' + unitLong(e, it.target) + '.');
+    } else if (st.k === 'rest') {
+      var nx = PL.sess.items[st.ni];
+      speak('Repos, ' + st.dur + ' secondes. Ensuite : ' + nx.ex.name + '.');
+    } else if (st.k === 'done') speak('Séance terminée. Bravo !');
+  }
+  function a11yCard() {
+    var a = a11y();
+    var row = function (k, title, sub) {
+      return '<div class="toggle-row"><span class="t"><b>' + title + '</b><span>' + sub + '</span></span>' +
+        '<button class="switch" type="button" role="switch" aria-label="' + title + '" aria-checked="' + !!a[k] + '" data-act="pf-a11y" data-k="' + k + '"></button></div>';
+    };
+    return '<div class="section-head"><h2>Accessibilité</h2></div><div class="card" id="a11y-card">' +
+      row('large', 'Texte plus grand', 'Agrandit les textes et les boutons') +
+      row('contrast', 'Contraste renforcé', 'Textes plus lisibles sur fond uni') +
+      row('calm', 'Réduire les animations', 'Coupe les mouvements et les effets visuels') +
+      (voiceOk ? row('voice', 'Lecture à voix haute', 'Le coach, la visite et les consignes de séance sont lus') : '') + '</div>';
+  }
+  function trapFocus(e) {
+    var root = TOUR ? $('.tour-card') : ($('#sheet .sheet') || (PL ? $('.player') : null));
+    if (!root) return;
+    var f = $$('button:not([disabled]), input, textarea, select, [tabindex="0"]', root).filter(function (x) { return x.offsetParent !== null; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (!root.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (TOUR) { e.preventDefault(); endTour(false); return; }
+      if ($('#sheet')) { e.preventDefault(); closeSheet(); return; }
+      if (PL) { e.preventDefault(); playerAction('pl-close', document.body); return; }
+      if (coach) coach.hide();
+    }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); }
+    if (e.key === 'Tab') trapFocus(e);
+  });
+
+  /* ================= Comptes (e-mail) ================= */
+  var cloudUid = null, pendingRemote = null;
+  function cloudOn() { return !!(window.GraviteCloud && window.GraviteCloud.enabled()); }
+  function cloudUser() { return cloudOn() ? window.GraviteCloud.user() : null; }
+  function savedLabel() {
+    var C = window.GraviteCloud, st = C.status(), t = C.savedAt();
+    if (st === 'saving' || st === 'pending') return 'Sauvegarde en cours…';
+    if (st === 'error') return 'Sauvegarde impossible pour le moment. Nouvel essai à la prochaine modification.';
+    return t ? 'Progression sauvegardée à ' + fmtDate(t, { hour: '2-digit', minute: '2-digit' }) : 'Progression sauvegardée sur ton compte';
+  }
+  function accountCard() {
+    if (!cloudOn() || demo) return '';
+    var u = cloudUser(), head = '<div class="section-head"><h2>Mon compte</h2></div><div class="card" id="account-card" style="display:grid;gap:14px">';
+    if (!u) {
+      return head + '<div class="equip-tip"><span class="eq-ic">' + I.cloud + '</span><div><b>Sauvegarde ta progression</b>' +
+        '<p class="faint" style="font-size:13px">Crée un compte gratuit avec ton e-mail : tes séances, niveaux et badges te suivent sur tous tes appareils.</p></div></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn primary" type="button" data-act="acc-open" data-v="signup">Créer un compte</button>' +
+        '<button class="btn" type="button" data-act="acc-open" data-v="login">Se connecter</button></div></div>';
+    }
+    return head + '<div class="equip-tip"><span class="eq-ic">' + I.cloud + '</span><div><b class="acc-email">' + esc(u.email || 'Compte connecté') + '</b>' +
+      '<p class="faint" id="acc-status" role="status" style="font-size:13px">' + savedLabel() + '</p></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn" type="button" data-act="acc-logout">Se déconnecter</button>' +
+      '<button class="btn" type="button" data-act="acc-open" data-v="newpw">Mot de passe</button></div>' +
+      '<button class="btn block danger ghost" type="button" data-act="acc-delete">' + I.trash + 'Supprimer mon compte</button></div>';
+  }
+  var ACC = {
+    signup: { t: 'Créer un compte', p: 'C’est gratuit. Ton e-mail sert uniquement à te connecter et à récupérer ton mot de passe.', btn: 'Créer mon compte', ac: 'new-password', email: 1, pass: 1 },
+    login: { t: 'Se connecter', p: 'Retrouve ta progression sur cet appareil.', btn: 'Me connecter', ac: 'current-password', email: 1, pass: 1 },
+    forgot: { t: 'Mot de passe oublié', p: 'Indique ton e-mail : tu recevras un lien pour choisir un nouveau mot de passe.', btn: 'Envoyer le lien', email: 1 },
+    newpw: { t: 'Nouveau mot de passe', p: 'Choisis un nouveau mot de passe de 8 caractères minimum.', btn: 'Enregistrer', ac: 'new-password', pass: 1 }
+  };
+  function accountSheet(mode) {
+    var M = ACC[mode];
+    var html = '<form id="acc-form" data-mode="' + mode + '" novalidate style="display:grid;gap:14px"><h2 class="title-lg">' + M.t + '</h2><p class="muted" style="font-size:14px">' + M.p + '</p>' +
+      (M.email ? '<div class="field"><label for="acc-email">Adresse e-mail</label><input id="acc-email" class="input" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" required></div>' : '') +
+      (M.pass ? '<div class="field"><label for="acc-pw">Mot de passe</label><div class="pw-wrap"><input id="acc-pw" class="input" type="password" autocomplete="' + M.ac + '" minlength="8" required aria-describedby="acc-pw-help">' +
+        '<button class="pw-toggle" type="button" data-act="pw-toggle" aria-label="Afficher le mot de passe" aria-pressed="false">' + I.eye + '</button></div>' +
+        '<p id="acc-pw-help" class="faint" style="font-size:12.5px">8 caractères minimum.</p></div>' : '') +
+      '<p id="acc-err" class="form-err" role="alert" hidden></p>' +
+      '<button class="btn primary block" type="submit" id="acc-submit">' + M.btn + '</button>' +
+      (mode === 'signup' ? '<button class="link-btn" type="button" data-act="acc-open" data-v="login">J’ai déjà un compte</button>' : '') +
+      (mode === 'login' ? '<div class="link-row"><button class="link-btn" type="button" data-act="acc-open" data-v="forgot">Mot de passe oublié ?</button><button class="link-btn" type="button" data-act="acc-open" data-v="signup">Créer un compte</button></div>' : '') +
+      '</form><button class="btn block ghost" type="button" data-act="sheet-close">Annuler</button>';
+    openSheet(html, M.t);
+    var first = $('#acc-email') || $('#acc-pw');
+    if (first) { try { first.focus(); } catch (e) { /* ignore */ } }
+  }
+  function infoSheet(title, text) {
+    openSheet('<div style="display:grid;gap:12px;text-align:center;justify-items:center"><span class="eq-ic" style="width:56px;height:56px;border-radius:18px">' + I.cloud + '</span>' +
+      '<h2 class="title-lg">' + esc(title) + '</h2><p class="muted">' + esc(text) + '</p></div>' +
+      '<button class="btn primary block" type="button" data-act="sheet-close">Compris</button>', title);
+  }
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'acc-form') return;
+    e.preventDefault();
+    var f = e.target, mode = f.dataset.mode, C = window.GraviteCloud;
+    var emailEl = $('#acc-email', f), pwEl = $('#acc-pw', f), email = emailEl ? emailEl.value.trim() : '', pw = pwEl ? pwEl.value : '';
+    var err = $('#acc-err'), btn = $('#acc-submit'), label = btn.textContent;
+    function fail(m, field) {
+      err.hidden = false; err.textContent = m; btn.disabled = false; btn.textContent = label;
+      if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
+    }
+    if (emailEl) emailEl.removeAttribute('aria-invalid');
+    if (pwEl) pwEl.removeAttribute('aria-invalid');
+    if (emailEl && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Entre une adresse e-mail valide, par exemple prenom@exemple.fr.', emailEl);
+    if (pwEl && pw.length < 8) return fail('Le mot de passe doit faire au moins 8 caractères.', pwEl);
+    if (!C || !C.enabled()) return fail('Les comptes ne sont pas disponibles sur cette version de l’appli.');
+    err.hidden = true; btn.disabled = true; btn.textContent = 'Un instant…';
+    var p;
+    if (mode === 'signup') {
+      p = C.signUp(email, pw).then(function (r) {
+        if (r.needsConfirm) infoSheet('Vérifie ta boîte mail', 'On t’a envoyé un lien de confirmation à ' + email + '. Clique dessus pour activer ton compte : ta progression sera alors sauvegardée.');
+        else { closeSheet(); toast('Compte créé : ta progression est sauvegardée'); }
+      });
+    } else if (mode === 'login') {
+      p = C.signIn(email, pw).then(function () { closeSheet(); toast('Connecté'); });
+    } else if (mode === 'forgot') {
+      p = C.resetPassword(email).then(function () { infoSheet('Regarde tes e-mails', 'Si un compte existe pour ' + email + ', tu vas recevoir un lien pour choisir un nouveau mot de passe.'); });
+    } else {
+      p = C.updatePassword(pw).then(function () { closeSheet(); toast('Mot de passe enregistré'); });
+    }
+    p.catch(function (x) { fail(x.message); });
+  });
+
+  /* Au moment de la connexion : on réunit la progression du compte et celle de l'appareil. */
+  function cloudPull(interactive) {
+    window.GraviteCloud.load().then(function (data) {
+      var r = data ? normalize(data) : null, L = REAL;
+      var lHas = L.onboarded && L.totals.sessions > 0, rHas = !!(r && r.onboarded && r.totals.sessions > 0);
+      if (!r || !r.onboarded) { if (L.onboarded) window.GraviteCloud.queueSave(L, true); return; }
+      if (!L.onboarded) return adoptCloud(r);
+      if ((r.updatedAt || 0) === (L.updatedAt || 0)) return;
+      if (lHas && rHas && interactive) return conflictSheet(r);
+      if (rHas && !lHas) return adoptCloud(r);
+      if (lHas && !rHas) return window.GraviteCloud.queueSave(L, true);
+      if ((r.updatedAt || 0) > (L.updatedAt || 0)) adoptCloud(r); else window.GraviteCloud.queueSave(L, true);
+    }).catch(function (x) { toast(x.message); });
+  }
+  function adoptCloud(r) {
+    r.onboarded = true;
+    REAL = r; Store.writeLocal(REAL);
+    if (!demo) S = REAL;
+    applyA11y();
+    if (!PL) { OB = newOB(); render(); }
+    toast('Progression récupérée depuis ton compte');
+  }
+  function conflictSheet(r) {
+    var d = function (s) { return s.totals.sessions + ' séance' + (s.totals.sessions > 1 ? 's' : '') + ', ' + fmtInt(s.xp) + ' XP'; };
+    pendingRemote = r;
+    openSheet('<h2 class="title-lg">Quelle progression garder ?</h2><p class="muted">Ton compte et cet appareil ont chacun une progression différente. L’autre sera remplacée.</p>' +
+      '<div class="sheet-actions"><button class="btn primary block" type="button" data-act="conflict" data-v="cloud">Celle du compte (' + d(r) + ')</button>' +
+      '<button class="btn block" type="button" data-act="conflict" data-v="local">Celle de cet appareil (' + d(REAL) + ')</button></div>', 'Choisir la progression');
+  }
+  function initCloud() {
+    if (!window.GraviteCloud || window.claude || !window.GraviteCloud.init()) return;
+    window.GraviteCloud.on(function (event, user) {
+      if (event === 'STATUS') { var el = $('#acc-status'); if (el) el.textContent = savedLabel(); return; }
+      if (event === 'PASSWORD_RECOVERY') accountSheet('newpw');
+      var uid = user ? user.id : null;
+      if (uid && uid !== cloudUid) { cloudUid = uid; cloudPull(event === 'SIGNED_IN'); }
+      else if (!uid) cloudUid = null;
+      if (!PL && !TOUR && (view === 'profil' || !S.onboarded)) render();
+    });
+  }
+
+  /* ================= Visite guidée ================= */
+  var TOUR = null, tourType = null, tourRaf = null;
+  function tourSteps() {
+    var s = [
+      { view: 'accueil', intro: true, text: 'Bienvenue' + firstName() + ' ! Je te fais visiter l’appli ? Une minute, et tu sauras où tout trouver.', mood: 'happy', anim: 'wave' },
+      { view: 'accueil', target: '.card-hero', text: 'Voici ta séance du jour. Touche « Commencer » quand tu es prêt : je te guide série par série, avec le chrono et les temps de repos.', mood: 'excited', anim: 'hop' },
+      { view: 'accueil', target: '.card-hero .ex-row', wait: true, text: 'Chaque exercice a son tuto animé. Essaie : touche cet exercice !', mood: 'wink', anim: 'wave' },
+      { target: '#sheet .tv', text: 'Le voilà en mouvement ! Le bouton « À éviter » montre l’erreur la plus courante, en rouge. En dessous : muscles travaillés et points clés.', mood: 'determined', anim: 'flex', after: function () { closeSheet(); } },
+      { view: 'accueil', target: '.week-strip', text: 'Chaque séance coche un jour de ta semaine. Tiens ton objectif plusieurs semaines d’affilée pour faire grimper ta série.', mood: 'proud', anim: 'flex' },
+      { view: 'accueil', target: '.traj-teaser', text: 'Ici, ce que tu sauras faire dans 3 mois si tu tiens le rythme. Motivant, non ?', mood: 'excited', anim: 'hop' },
+      { view: 'accueil', target: '.tab[data-view="programme"]', wait: true, text: 'Allons voir ton programme. Touche l’onglet « Programme » en bas de l’écran.', mood: 'happy', anim: 'walk' },
+      { view: 'programme', before: function () { ui.progTab = 'semaine'; }, target: '.plan-item', text: 'Tes séances de la semaine, dans l’ordre. Tu peux lancer n’importe laquelle avec le bouton lecture.', mood: 'happy', anim: 'wave' },
+      { view: 'programme', target: '[data-act="prog-tab"][data-v="trajectoire"]', wait: true, text: 'Touche « Mon planning » pour voir jusqu’où tu peux aller.', mood: 'excited', anim: 'hop' },
+      { view: 'programme', before: function () { ui.progTab = 'trajectoire'; }, target: '.traj-hero', text: 'Ton évolution estimée : pompes, tractions, secondes en ATR. Change d’horizon avec 3 mois, 6 mois ou 1 an.', mood: 'excited', anim: 'celebrate' },
+      { view: 'programme', target: '.tab[data-view="progres"]', wait: true, text: 'Direction tes progrès ! Touche l’onglet « Progrès ».', mood: 'determined', anim: 'walk' },
+      { view: 'progres', target: '.rank-card', text: 'Chaque série te rapporte de l’XP. Monte en rang, de Novice jusqu’à Légende !', mood: 'cool', anim: 'flex' },
+      { view: 'progres', target: '.path', text: 'Ton parcours : chaque famille a ses niveaux. Touche un niveau pour voir son tuto, ou pour dire que tu le maîtrises déjà.', mood: 'determined', anim: 'look' },
+      { view: 'progres', target: '.badges', text: 'Et des badges à collectionner. Lequel auras-tu en premier ?', mood: 'excited', anim: 'hop' },
+      { view: 'progres', target: '.tab[data-view="profil"]', wait: true, text: 'Dernier arrêt : ton profil. Touche l’onglet « Profil ».', mood: 'happy', anim: 'walk' },
+      { view: 'profil', target: '#equip-card', text: 'Ajoute ou retire ton matériel ici : ton programme s’adapte tout seul.', mood: 'wink', anim: 'wave' }
+    ];
+    if (cloudOn() && !demo && !cloudUser()) s.push({ view: 'profil', target: '#account-card', text: 'Crée un compte gratuit avec ton e-mail pour sauvegarder ta progression et la retrouver sur tous tes appareils.', mood: 'love', anim: 'hop' });
+    s.push({ view: 'profil', target: '#a11y-card', text: 'Texte plus grand, contraste renforcé, lecture à voix haute : règle l’appli comme tu préfères.', mood: 'happy', anim: 'wave' });
+    s.push({ view: 'accueil', target: '#app .mascot', final: true, text: 'Et moi, je reste là, en haut à gauche. Touche-moi quand tu veux un conseil ou un point sur tes progrès. À toi de jouer !', mood: 'love', anim: 'celebrate' });
+    return s;
+  }
+  function startTour() {
+    if (TOUR || PL || !S.onboarded) return;
+    closeSheet();
+    if (coach) coach.hide();
+    var el = document.createElement('div');
+    el.className = 'tour'; el.id = 'tour';
+    el.innerHTML = ['t', 'b', 'l', 'r', 'h'].map(function (k) { return '<div class="tour-block" data-b="' + k + '"></div>'; }).join('') +
+      '<div class="tour-ring empty" aria-hidden="true"></div>' +
+      '<div class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-live"><div class="tour-mascot"></div>' +
+      '<div class="tour-body"><p class="tour-step"></p><p class="tour-text" aria-hidden="true"></p><p class="sr-only" id="tour-live" aria-live="polite"></p><div class="tour-foot"></div></div></div>';
+    document.body.appendChild(el);
+    var m = window.GraviteCoach ? window.GraviteCoach.create({ onTap: function () { if (TOUR && TOUR.mascot) TOUR.mascot.express('happy', 'hop', 500); } }) : null;
+    if (m) el.querySelector('.tour-mascot').appendChild(m.el);
+    TOUR = { i: 0, steps: tourSteps(), el: el, mascot: m, target: null };
+    showTourStep();
+  }
+  function showTourStep() {
+    var step = TOUR.steps[TOUR.i], changeView = step.view && step.view !== view;
+    if (step.before) step.before();
+    if (changeView) { view = step.view; try { location.hash = view; } catch (e) { /* ignore */ } }
+    if (changeView || step.before) { render(changeView); window.scrollTo(0, 0); }
+    TOUR.target = null;
+    TOUR.el.classList.add('moving');
+    setTimeout(function () {
+      if (!TOUR) return;
+      var t = step.target ? document.querySelector(step.target) : null;
+      TOUR.target = t;
+      if (t && !t.closest('.tabbar')) t.scrollIntoView({ block: 'center', behavior: calm() ? 'auto' : 'smooth' });
+      setTimeout(function () {
+        if (!TOUR) return;
+        placeTour();
+        fillTourCard(step);
+        TOUR.el.classList.remove('moving');
+      }, t ? 450 : 30);
+    }, changeView || step.before ? 140 : 40);
+  }
+  function placeTour() {
+    var step = TOUR.steps[TOUR.i], t = TOUR.target, el = TOUR.el, W = innerWidth, H = innerHeight, pad = 8, h;
+    if (t && t.isConnected) {
+      var r = t.getBoundingClientRect();
+      h = { x: Math.max(4, r.left - pad), y: Math.max(4, r.top - pad) };
+      h.w = Math.min(W - 4, r.right + pad) - h.x; h.h = Math.min(H - 4, r.bottom + pad) - h.y;
+    } else h = { x: W / 2, y: H / 2, w: 0, h: 0 };
+    var ring = el.querySelector('.tour-ring');
+    ring.style.cssText = 'left:' + h.x + 'px;top:' + h.y + 'px;width:' + h.w + 'px;height:' + h.h + 'px';
+    ring.classList.toggle('empty', !t);
+    var b = function (k, x, y, w, hh) { el.querySelector('[data-b="' + k + '"]').style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + Math.max(0, w) + 'px;height:' + Math.max(0, hh) + 'px'; };
+    b('t', 0, 0, W, h.y); b('b', 0, h.y + h.h, W, H - h.y - h.h); b('l', 0, h.y, h.x, h.h); b('r', h.x + h.w, h.y, W - h.x - h.w, h.h);
+    b('h', h.x, h.y, step.wait ? 0 : h.w, step.wait ? 0 : h.h);
+    el.querySelector('.tour-card').classList.toggle('at-top', !!t && h.y + h.h / 2 > H * 0.5);
+  }
+  function fillTourCard(step) {
+    var el = TOUR.el, n = TOUR.steps.length, txt = el.querySelector('.tour-text');
+    el.querySelector('.tour-step').textContent = step.intro ? 'Visite guidée' : 'Étape ' + TOUR.i + ' sur ' + (n - 1);
+    el.querySelector('#tour-live').textContent = step.text;
+    clearInterval(tourType);
+    if (calm()) txt.textContent = step.text;
+    else {
+      var i = 0;
+      txt.textContent = '';
+      tourType = setInterval(function () { i += 2; txt.textContent = step.text.slice(0, i); if (i >= step.text.length) clearInterval(tourType); }, 22);
+    }
+    if (TOUR.mascot) TOUR.mascot.express(step.mood, step.anim, Math.min(4200, step.text.length * 24));
+    el.querySelector('.tour-foot').innerHTML = step.intro
+      ? '<button class="btn ghost" type="button" data-act="tour-skip">Plus tard</button><button class="btn primary" type="button" data-act="tour-next">C’est parti</button>'
+      : '<button class="btn ghost" type="button" data-act="tour-skip">Passer</button><button class="btn primary" type="button" data-act="tour-next">' + (step.final ? 'Terminer' : 'Suivant') + '</button>';
+    speak(step.text);
+    var nb = el.querySelector('[data-act="tour-next"]');
+    if (nb) { try { nb.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  function nextTour() {
+    if (!TOUR) return;
+    var step = TOUR.steps[TOUR.i];
+    if (step.after) step.after();
+    if (step.final || TOUR.i >= TOUR.steps.length - 1) { endTour(true); return; }
+    TOUR.i++;
+    showTourStep();
+  }
+  function endTour(done) {
+    if (!TOUR) return;
+    clearInterval(tourType);
+    TOUR.el.remove();
+    TOUR = null;
+    closeSheet();
+    S.profile.tourDone = true;
+    save();
+    if (done) { coachSay({ t: 'Visite terminée ! Lance ta première séance quand tu veux, je serai là à chaque série.', m: 'proud', a: 'celebrate' }, true); confetti(); }
+    else coachSay({ t: 'Pas de souci ! Tu pourras revoir la visite depuis ton profil.', m: 'wink', a: 'wave' }, true);
+  }
+  /* Les étapes « touche ici » avancent dès que la personne touche la zone en surbrillance. */
+  document.addEventListener('click', function (e) {
+    if (!TOUR || TOUR.waiting) return;
+    var step = TOUR.steps[TOUR.i];
+    if (step.wait && TOUR.target && TOUR.target.contains(e.target)) {
+      TOUR.waiting = true;
+      setTimeout(function () { if (TOUR) { TOUR.waiting = false; nextTour(); } }, 560);
+    }
+  }, true);
+  function tourReflow() {
+    if (!TOUR || tourRaf) return;
+    tourRaf = requestAnimationFrame(function () { tourRaf = null; if (TOUR && !TOUR.el.classList.contains('moving')) placeTour(); });
+  }
+  window.addEventListener('resize', tourReflow);
+  document.addEventListener('scroll', tourReflow, true);
+
   /* ================= Démarrage ================= */
+  applyA11y();
+  (function () {
+    var skip = document.createElement('button');
+    skip.type = 'button'; skip.className = 'skip-link'; skip.textContent = 'Aller au contenu';
+    skip.addEventListener('click', function () { appEl.setAttribute('tabindex', '-1'); appEl.focus(); });
+    document.body.insertBefore(skip, document.body.firstChild);
+  })();
   render();
-  setTimeout(function () { coachView(); }, 700);
+  initCloud();
+  setTimeout(function () {
+    if (S.onboarded && !demo && !S.profile.tourDone && !readResume()) startTour(); else coachView();
+  }, 900);
   Store.connect().then(function (remote) {
     var r = remote ? normalize(remote) : null;
     if (r && (r.updatedAt || 0) > (REAL.updatedAt || 0)) {

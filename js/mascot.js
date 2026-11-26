@@ -152,6 +152,19 @@ window.GraviteCoach = (function () {
       T.hide = setTimeout(hide, o.hold || 2800 + text.length * 55);
       draw();
     }
+    /* Expression et animation sans bulle, avec la bouche qui bouge pendant talkMs (visite guidée). */
+    function express(mood, a, talkMs) {
+      ['type', 'mouth', 'hide', 'mood', 'out'].forEach(clear);
+      bubble.hidden = true;
+      st.mood = MOODS[mood] ? mood : 'happy';
+      anim(a);
+      if (talkMs && !reduce) {
+        st.talking = true;
+        T.mouth = setInterval(function () { st.mouth = st.mouth === 'talk1' ? 'talk2' : 'talk1'; draw(); }, 110);
+        T.type = setTimeout(function () { clear('mouth'); st.talking = false; draw(); }, talkMs);
+      }
+      draw();
+    }
     function setBase(m) { st.base = MOODS[m] ? m : 'neutral'; if (!st.talking && bubble.hidden) { st.mood = st.base; draw(); } }
 
     // Clignements et petites animations quand il ne parle pas.
@@ -179,7 +192,7 @@ window.GraviteCoach = (function () {
 
     draw();
     if (!reduce) { blinkLoop(); idleLoop(); }
-    return { el: el, say: say, hide: hide, anim: anim, setBase: setBase, isTalking: function () { return st.talking || !bubble.hidden; } };
+    return { el: el, say: say, hide: hide, anim: anim, setBase: setBase, express: express, isTalking: function () { return st.talking || !bubble.hidden; } };
   }
 
   return { create: create, moods: Object.keys(MOODS) };

@@ -29,6 +29,12 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
   les muscles travaillés, l'intérêt de l'exercice, les points clés et les erreurs fréquentes. La mini vidéo s'affiche aussi pendant la séance.
 - **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 16 badges, historique.
 - **Mode exemple** pour voir l'app remplie avant de commencer.
+- **Visite guidée** avec la mascotte : après le questionnaire, elle fait le tour des 4 onglets en 18 étapes
+  (certaines se font en touchant soi-même l'écran). À revoir depuis le profil.
+- **Comptes gratuits par e-mail** (facultatifs) : inscription, connexion, mot de passe oublié, suppression du compte,
+  et sauvegarde automatique de la progression pour la retrouver sur tous ses appareils. Voir la mise en ligne ci-dessous.
+- **Accessibilité** : texte plus grand, contraste renforcé, animations réduites, lecture à voix haute du coach et des consignes,
+  navigation complète au clavier (Échap ferme les fenêtres), libellés pour les lecteurs d'écran.
 - Sauvegarde automatique sur l'appareil, export / import de la progression.
 
 ## Lancer l'app
@@ -44,18 +50,30 @@ Pour l'avoir sur ton téléphone comme une vraie app : publie le dépôt avec Gi
 (Settings → Pages → branche), ouvre l'adresse sur ton téléphone puis « Ajouter à l'écran d'accueil ».
 L'app fonctionne ensuite hors ligne.
 
+## Mettre le site en ligne pour tout le monde
+
+Le site est 100 % statique : il s'héberge gratuitement (GitHub Pages, Netlify, Cloudflare Pages) et s'ouvre
+sans compte Claude. Les comptes par e-mail utilisent Supabase (gratuit). Le pas-à-pas est dans
+[docs/MISE-EN-LIGNE.md](docs/MISE-EN-LIGNE.md).
+
 ## Structure
 
 ```
 index.html            page d'entrée
 css/styles.css        thème sombre, verre liquide, animations
 js/data.js            exercices, parcours, séances, badges
+js/config.js          adresse et clé publique du projet Supabase (vide = sans comptes)
+js/cloud.js           comptes par e-mail et sauvegarde en ligne
+js/vendor/            bibliothèque Supabase (licence MIT)
 js/mascot.js          mascotte coach : sprite, expressions, bulles
 js/tutos.js           fiches et animations des 55 exercices
 js/app.js             logique du programme, écrans, lecteur de séance
 manifest.webmanifest  installation sur l'écran d'accueil
 sw.js                 cache hors ligne
 icons/                icônes de l'app
+supabase/schema.sql   table et règles de sécurité des comptes
+docs/                 guide de mise en ligne
+.github/workflows/    publication automatique sur GitHub Pages
 ```
 
 Pour ajouter un exercice, insère-le dans `js/data.js` à sa place dans la famille : l'ordre du tableau définit l'ordre des niveaux.
