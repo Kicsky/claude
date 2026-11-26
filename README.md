@@ -1,1 +1,79 @@
-# claude
+# Gravité · calisthenics au poids du corps
+
+Application web de musculation au poids du corps : pompes, tractions, squats, gainage et ATR.
+Interface sombre et violette, boutons en verre liquide, et une progression par niveaux qui donne envie de revenir.
+
+## Ce que fait l'app
+
+- **Test de niveau** : objectif, matériel disponible, pompes, tractions (si tu as une barre), ATR, séances par semaine.
+- **Adapté à ton matériel** : barre de traction, table, chaise, barres à dips, élastiques… ou rien du tout.
+  Sans barre, le dos travaille avec superman, Y-T-W, rowing serviette à la porte ou rowings sous une table.
+- **Programme hebdomadaire généré** : Full body, Haut du corps, Jambes & gainage, ATR… selon 2 à 6 séances par semaine.
+- **5 parcours de progression**, jusqu'à 19 niveaux selon le matériel :
+  - Poussée : pompes contre un mur → pompes à un bras
+  - Tirage : superman → muscle-up, avec des variantes selon le matériel (porte, table, élastique, barre)
+  - Jambes : squats assistés → pistol squat
+  - Gainage : planche → dragon flag
+  - ATR & équilibre : pompes pike → pompes en ATR
+- **Objectifs qui montent tout seuls** : séries réussies = +1 rép (+5 s), +2 si « trop facile ». Atteins l'objectif de déblocage sur toutes tes séries et le niveau suivant s'ouvre.
+- **Lecteur de séance guidé** : échauffement, consignes, compteur de répétitions, chrono pour les exercices tenus, minuteur de repos avec bips et vibrations, écran maintenu allumé.
+- **Mon planning** : estimation de tes capacités dans 3 mois, 6 mois ou 1 an si tu tiens ton programme
+  (pompes d'affilée, tractions, secondes en ATR contre le mur et sans appui), courbe semaine par semaine
+  et dates estimées de chaque nouveau niveau. L'estimation rejoue ton programme avec les mêmes règles de
+  progression et ton taux de réussite réel, et se recalcule après chaque séance.
+- **Mascotte coach** : un petit personnage en pixel art violet, en haut à gauche de chaque écran (et pendant les séances).
+  Il parle dans une bulle avec des expressions (content, déterminé, surpris, fier, endormi…) : il pousse à lancer la séance,
+  annonce les progrès, prévient quand un niveau est proche et encourage pendant les séries. Touche-le pour qu'il te parle.
+  Réglage « Coach bavard » dans le profil.
+- **Tutos pour chaque exercice** : touche un exercice pour voir une mini vidéo animée (bonne exécution / erreur à éviter),
+  les muscles travaillés, l'intérêt de l'exercice, les points clés et les erreurs fréquentes. La mini vidéo s'affiche aussi pendant la séance.
+- **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 16 badges, historique.
+- **Mode exemple** pour voir l'app remplie avant de commencer.
+- **Visite guidée** avec la mascotte : après le questionnaire, elle fait le tour des 4 onglets en 18 étapes
+  (certaines se font en touchant soi-même l'écran). À revoir depuis le profil.
+- **Comptes gratuits par e-mail** (facultatifs) : inscription, connexion, mot de passe oublié, suppression du compte,
+  et sauvegarde automatique de la progression pour la retrouver sur tous ses appareils. Voir la mise en ligne ci-dessous.
+- **Accessibilité** : texte plus grand, contraste renforcé, animations réduites, lecture à voix haute du coach et des consignes,
+  navigation complète au clavier (Échap ferme les fenêtres), libellés pour les lecteurs d'écran.
+- Sauvegarde automatique sur l'appareil, export / import de la progression.
+
+## Lancer l'app
+
+Aucune installation ni dépendance. Ouvre `index.html` dans un navigateur, ou sers le dossier :
+
+```bash
+python3 -m http.server 8000
+# puis http://localhost:8000
+```
+
+Pour l'avoir sur ton téléphone comme une vraie app : publie le dépôt avec GitHub Pages
+(Settings → Pages → branche), ouvre l'adresse sur ton téléphone puis « Ajouter à l'écran d'accueil ».
+L'app fonctionne ensuite hors ligne.
+
+## Mettre le site en ligne pour tout le monde
+
+Le site est 100 % statique : il s'héberge gratuitement (GitHub Pages, Netlify, Cloudflare Pages) et s'ouvre
+sans compte Claude. Les comptes par e-mail utilisent Supabase (gratuit). Le pas-à-pas est dans
+[docs/MISE-EN-LIGNE.md](docs/MISE-EN-LIGNE.md).
+
+## Structure
+
+```
+index.html            page d'entrée
+css/styles.css        thème sombre, verre liquide, animations
+js/data.js            exercices, parcours, séances, badges
+js/config.js          adresse et clé publique du projet Supabase (vide = sans comptes)
+js/cloud.js           comptes par e-mail et sauvegarde en ligne
+js/vendor/            bibliothèque Supabase (licence MIT)
+js/mascot.js          mascotte coach : sprite, expressions, bulles
+js/tutos.js           fiches et animations des 55 exercices
+js/app.js             logique du programme, écrans, lecteur de séance
+manifest.webmanifest  installation sur l'écran d'accueil
+sw.js                 cache hors ligne
+icons/                icônes de l'app
+supabase/schema.sql   table et règles de sécurité des comptes
+docs/                 guide de mise en ligne
+.github/workflows/    publication automatique sur GitHub Pages
+```
+
+Pour ajouter un exercice, insère-le dans `js/data.js` à sa place dans la famille : l'ordre du tableau définit l'ordre des niveaux.
