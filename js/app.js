@@ -1776,7 +1776,7 @@
         PL.hold.endAt = Date.now() + PL.sess.items[st.i].target * 1000;
         PL.hold.startedAt = Date.now();
         renderPlayer();
-        coachSay({ t: 'Tiens bon ! Respire calmement, je compte avec toi.', m: 'effort' });
+        coachSay({ t: 'Tiens bon, respire !', m: 'effort' });
         break;
       case 'pl-hold-stop':
         PL.hold.state = 'end';
@@ -1861,6 +1861,15 @@
     if (!coach) return;
     var slot = (PL && playerRoot.querySelector('.mascot-slot')) || appEl.querySelector('.mascot-slot');
     if (slot && coach.el.parentNode !== slot) slot.appendChild(coach.el);
+    if (slot) {
+      // Sous l'en-tête de l'écran : bloc de la page (ou haut du lecteur de séance).
+      var host = slot, top = slot.closest('.player-top');
+      if (top) top.parentNode.appendChild(coach.bubble);
+      else {
+        while (host.parentNode && !(host.parentNode.classList && host.parentNode.classList.contains('view'))) host = host.parentNode;
+        if (host.parentNode && host.nextSibling !== coach.bubble) host.parentNode.insertBefore(coach.bubble, host.nextSibling);
+      }
+    }
     var last = S.history[S.history.length - 1];
     coach.setBase(S.onboarded && last && daysBetween(new Date(last.at), new Date()) >= 7 ? 'sleepy' : 'neutral');
   }
@@ -1884,20 +1893,20 @@
     var x = nextUnlocks(S).filter(function (n) { return n.pct >= 0.7; })[0];
     if (!x) return null;
     var left = x.e.unlock - x.t;
-    if (left <= 0) return { t: 'Tu peux débloquer ' + x.nx.name + ' dès ta prochaine séance : tiens ' + x.e.unlock + unitShort(x.e) + ' sur toutes tes séries !', m: 'excited', a: 'hop' };
-    return { t: 'Plus que ' + left + (x.e.type === 'time' ? ' s' : ' répétition' + (left > 1 ? 's' : '')) + ' à gagner sur ' + x.e.name.toLowerCase() + ' et tu débloques ' + x.nx.name + ' !', m: 'excited', a: 'hop' };
+    if (left <= 0) return { t: 'Tu peux débloquer ' + x.nx.name + ' à la prochaine séance !', m: 'excited', a: 'hop' };
+    return { t: 'Plus que ' + left + (x.e.type === 'time' ? ' s' : ' rép.') + ' avant ' + x.nx.name + ' !', m: 'excited', a: 'hop' };
   }
   function homeLine() {
     var s = S, now = new Date(), last = s.history[s.history.length - 1], since = last ? daysBetween(new Date(last.at), now) : null;
     var goal = s.profile.days, weekDone = sessionsInWeek(weekStart(now), s).length, sess = buildSession(nextTpl(s), s), nm = firstName();
-    if (since === null) return { t: 'Salut' + nm + ' ! Je suis ton coach. On attaque ta première séance ? ' + estimate(sess) + ' minutes, et je te guide à chaque série.', m: 'happy', a: 'wave' };
-    if (since === 0) return { t: 'Séance faite aujourd’hui, bravo' + nm + ' ! Tes muscles se reconstruisent pendant le repos.', m: 'love', a: 'hop' };
-    if (weekDone >= goal) return { t: 'Objectif de la semaine atteint ! Tu es une machine.', m: 'cool', a: 'flex' };
+    if (since === null) return { t: 'Salut' + nm + ' ! Prêt pour ta première séance ?', m: 'happy', a: 'wave' };
+    if (since === 0) return { t: 'Séance faite aujourd’hui, bravo' + nm + ' !', m: 'love', a: 'hop' };
+    if (weekDone >= goal) return { t: 'Objectif de la semaine atteint !', m: 'cool', a: 'flex' };
     var near = nearLine();
     if (near && since <= 4) return near;
-    if (since <= 2) return { t: 'Prêt pour « ' + sess.name + ' » ? ' + estimate(sess) + ' minutes et c’est plié.', m: 'determined', a: 'flex' };
-    if (since <= 6) return { t: since + ' jours sans séance… je commence à rouiller, moi ! On s’y remet ?', m: 'surprised', a: 'shake' };
-    return { t: 'Tu m’as manqué' + nm + ' ! On reprend en douceur aujourd’hui ?', m: 'sad', a: 'wave' };
+    if (since <= 2) return { t: 'On enchaîne ? ' + estimate(sess) + ' min aujourd’hui.', m: 'determined', a: 'flex' };
+    if (since <= 6) return { t: since + ' jours sans séance… on s’y remet ?', m: 'surprised', a: 'shake' };
+    return { t: 'Tu m’as manqué' + nm + ' ! On reprend en douceur ?', m: 'sad', a: 'wave' };
   }
   function viewLine() {
     var s = S;
@@ -1905,45 +1914,44 @@
     if (view === 'programme') {
       if (ui.progTab === 'trajectoire') {
         var v = capView(simulate(s, 52).snaps[ui.h].cap)[0];
-        return { t: 'Dans ' + { 13: '3 mois', 26: '6 mois', 52: '1 an' }[ui.h] + ', tu pourrais enchaîner ' + v.n + ' ' + v.unit + ' ! Ça donne envie, non ?', m: 'excited', a: 'hop' };
+        return { t: 'Dans ' + { 13: '3 mois', 26: '6 mois', 52: '1 an' }[ui.h] + ' : ' + v.n + (v.sfx || '') + ' ' + v.unit + ' !', m: 'excited', a: 'hop' };
       }
-      return { t: 'Ta prochaine séance : ' + D.TEMPLATES[nextTpl(s)].name + '. Touche un exercice pour voir son tuto animé.', m: 'happy', a: 'wave' };
+      return { t: 'Touche un exercice pour voir son tuto.', m: 'happy', a: 'wave' };
     }
     if (view === 'progres') {
       var r = rankOf(s.xp), n = s.unlocks.length;
-      return { t: 'Rang ' + r.cur.name + (r.nxt ? ' : encore ' + fmtInt(r.nxt.xp - s.xp) + ' XP pour devenir ' + r.nxt.name : '') + '. ' +
-        (n ? n + ' niveau' + (n > 1 ? 'x' : '') + ' débloqué' + (n > 1 ? 's' : '') + ', continue !' : 'Ton premier niveau t’attend.'), m: 'cool', a: 'flex' };
+      return { t: 'Rang ' + r.cur.name + (r.nxt ? ' · encore ' + fmtInt(r.nxt.xp - s.xp) + ' XP' : '') + (n ? ' · ' + n + ' niveau' + (n > 1 ? 'x' : '') : ''), m: 'cool', a: 'flex' };
     }
-    return { t: 'Dis-moi ce que tu as comme matériel : j’adapte tout ton programme.', m: 'wink', a: 'wave' };
+    return { t: 'Dis-moi ton matériel, j’adapte tout.', m: 'wink', a: 'wave' };
   }
   var TIPS = [
-    { t: 'Astuce : serre les fessiers pendant les pompes. Ton dos te dira merci.', m: 'wink' },
-    { t: 'Lent à la descente, contrôlé à la montée : c’est le secret de la force.', m: 'determined' },
-    { t: 'C’est pendant le sommeil que tes muscles grandissent. Vise 7 à 9 heures.', m: 'sleepy' },
-    { t: 'Bois de l’eau pendant les repos, même sans soif.', m: 'happy' },
-    { t: 'Une séance courte vaut mieux qu’une séance sautée.', m: 'proud' },
-    { t: 'Échauffe bien tes poignets avant l’ATR : ils portent tout ton poids !', m: 'surprised' },
-    { t: 'Touche un exercice pour voir son tuto animé et les erreurs à éviter.', m: 'excited' },
-    { t: 'Des protéines à chaque repas aident tes muscles à se réparer.', m: 'happy' }
+    { t: 'Serre les fessiers pendant les pompes.', m: 'wink' },
+    { t: 'Lent à la descente, contrôlé à la montée.', m: 'determined' },
+    { t: 'Dors 7 à 9 h : c’est là que tu progresses.', m: 'sleepy' },
+    { t: 'Bois un peu d’eau pendant les repos.', m: 'happy' },
+    { t: 'Une séance courte vaut mieux que rien.', m: 'proud' },
+    { t: 'Échauffe tes poignets avant l’ATR.', m: 'surprised' },
+    { t: 'Touche un exercice pour son tuto animé.', m: 'excited' },
+    { t: 'Des protéines à chaque repas !', m: 'happy' }
   ];
   function obLine() {
-    if (OB.screen === 'welcome') return { t: 'Salut ! Je suis ton coach. Quelques questions et je te prépare un programme sur mesure.', m: 'happy', a: 'wave' };
+    if (OB.screen === 'welcome') return { t: 'Salut ! Je te prépare un programme sur mesure.', m: 'happy', a: 'wave' };
     if (OB.screen === 'ready') {
       var v = capView(simulate(S, 52).snaps[13].cap)[0];
-      return { t: 'Ton programme est prêt ! Dans 3 mois : environ ' + v.n + ' ' + v.unit + '. On y va ?', m: 'excited', a: 'celebrate' };
+      return { t: 'C’est prêt ! On y va ?', m: 'excited', a: 'celebrate' };
     }
     return {
-      goal: { t: 'Ton prénom, c’est pour que je puisse t’encourager !', m: 'wink', a: 'wave' },
-      equip: { t: 'Pas de matériel ? Aucun souci : le sol, un mur et une porte suffisent.', m: 'happy', a: 'hop' },
+      goal: { t: 'Ton prénom, pour mieux t’encourager !', m: 'wink', a: 'wave' },
+      equip: { t: 'Pas de matériel ? Le sol et une porte suffisent.', m: 'happy', a: 'hop' },
       push: { t: 'Sois honnête, je ne juge pas !', m: 'wink' },
-      pull: { t: 'Zéro traction ? C’est normal au début. On va y arriver ensemble.', m: 'determined', a: 'flex' },
-      atr: { t: 'L’ATR impressionne au début. Je vais te guider pas à pas.', m: 'excited', a: 'hop' },
-      days: { t: 'Trois séances par semaine, c’est parfait pour progresser sans se cramer.', m: 'happy' }
+      pull: { t: 'Zéro traction ? Normal au début.', m: 'determined', a: 'flex' },
+      atr: { t: 'L’ATR, on y va pas à pas.', m: 'excited', a: 'hop' },
+      days: { t: '3 séances par semaine, c’est idéal.', m: 'happy' }
     }[obQuestions()[OB.qi]];
   }
   function playerTapPool() {
     var st = curStep();
-    if (st.k === 'rest') return [{ t: 'Respire profondément. Encore quelques secondes et on repart !', m: 'happy' }, { t: 'Secoue les bras, détends les épaules.', m: 'wink' }];
+    if (st.k === 'rest') return [{ t: 'Respire, on repart bientôt !', m: 'happy' }, { t: 'Détends les épaules.', m: 'wink' }];
     if (st.k === 'set') { var e = PL.sess.items[st.i].ex; return [{ t: e.cues[0], m: 'determined', a: 'flex' }, { t: e.cues[1], m: 'wink' }]; }
     return [{ t: 'Je suis fier de toi !', m: 'love', a: 'hop' }];
   }
@@ -1952,9 +1960,9 @@
     if (!S.onboarded || OB.active) return [obLine()];
     var s = S, lines = [viewLine()], sim = simulate(s, 52), ms = milestones(sim, 52)[0], x = nextUnlocks(s)[0], streak = streakWeeks(s), near = nearLine();
     if (near) lines.push(near);
-    if (ms) lines.push({ t: 'Si tu tiens le rythme : ' + lc(ms.txt) + ', ' + atWeek(ms.w) + '. Je le sens bien !', m: 'excited', a: 'hop' });
-    if (x) lines.push({ t: 'Prochain niveau : ' + x.nx.name + '. Tu en es à ' + Math.round(x.pct * 100) + ' % de l’objectif.', m: 'determined', a: 'flex' });
-    if (streak >= 1) lines.push({ t: streak + ' semaine' + (streak > 1 ? 's' : '') + ' d’affilée à tenir ton objectif. Ne casse pas la série !', m: 'proud', a: 'flex' });
+    if (ms) lines.push({ t: 'Bientôt : ' + lc(ms.txt) + ' !', m: 'excited', a: 'hop' });
+    if (x) lines.push({ t: 'Prochain niveau : ' + x.nx.name + ' (' + Math.round(x.pct * 100) + ' %)', m: 'determined', a: 'flex' });
+    if (streak >= 1) lines.push({ t: streak + ' semaine' + (streak > 1 ? 's' : '') + ' d’affilée, continue !', m: 'proud', a: 'flex' });
     lines.push(TIPS[Math.floor(Math.random() * TIPS.length)]);
     return lines;
   }
@@ -1972,34 +1980,34 @@
     var line = inOb ? obLine() : viewLine();
     setTimeout(function () { coachSay(line, false, true); }, 450);
   }
-  var REST_LINES = ['Bien joué ! Respire un bon coup.', 'Propre ! Bois une gorgée d’eau.', 'Belle série ! Secoue les bras.', 'Ça avance bien, continue comme ça.', 'Tu gères ! Récupère bien.'];
+  var REST_LINES = ['Bien joué ! Respire.', 'Propre !', 'Belle série !', 'Ça avance bien !', 'Tu gères !'];
   /* Le coach pendant la séance. */
   function coachStep() {
     if (!coach || !PL) return;
     var st = curStep(), line = null;
-    if (st.k === 'warm') line = { t: 'On s’échauffe d’abord. Tes articulations vont me remercier !', m: 'happy', a: 'wave' };
+    if (st.k === 'warm') line = { t: 'On s’échauffe d’abord !', m: 'happy', a: 'wave' };
     else if (st.k === 'set') {
       var it = PL.sess.items[st.i], e = it.ex, c = chain(e.f, S), next = c[c.indexOf(e) + 1];
-      if (st.i === PL.sess.items.length - 1 && st.s === it.sets - 1) line = { t: 'Dernière série de la séance ! Donne tout !', m: 'effort', a: 'flex' };
-      else if (st.s === 0 && it.main && next && it.target >= e.unlock) line = { t: 'Tiens ' + it.target + unitShort(e) + ' sur toutes les séries et tu débloques ' + next.name + ' !', m: 'excited', a: 'hop' };
-      else if (st.s === 0) line = { t: e.name + ' : objectif ' + it.target + ' ' + unitLong(e, it.target) + '. Je compte avec toi !', m: 'determined', a: 'flex' };
+      if (st.i === PL.sess.items.length - 1 && st.s === it.sets - 1) line = { t: 'Dernière série, donne tout !', m: 'effort', a: 'flex' };
+      else if (st.s === 0 && it.main && next && it.target >= e.unlock) line = { t: 'Réussis tout et tu débloques ' + next.name + ' !', m: 'excited', a: 'hop' };
+      else if (st.s === 0) line = { t: 'Allez, je compte avec toi !', m: 'determined', a: 'flex' };
     } else if (st.k === 'rest') {
       var prev = PL.log[st.i][st.s], tgt = PL.sess.items[st.i].target;
-      if (prev != null && prev < tgt) line = { t: 'Pas grave, on fait de son mieux. La prochaine sera meilleure !', m: 'love' };
-      else if (prev != null && prev > tgt) line = { t: 'Plus que l’objectif ! Tu m’impressionnes.', m: 'surprised', a: 'hop' };
-      else if (Math.random() < 0.55) line = { t: REST_LINES[Math.floor(Math.random() * REST_LINES.length)], m: 'happy' };
+      if (prev != null && prev < tgt) line = { t: 'Pas grave, la prochaine sera mieux !', m: 'love' };
+      else if (prev != null && prev > tgt) line = { t: 'Au-dessus de l’objectif, bravo !', m: 'surprised', a: 'hop' };
+      else if (Math.random() < 0.35) line = { t: REST_LINES[Math.floor(Math.random() * REST_LINES.length)], m: 'happy' };
     } else if (st.k === 'done' && totalsOf(PL).sets) {
       lastAuto = 0;
-      line = { t: 'Séance terminée ! Je suis fier de toi. Comment c’était ?', m: 'love', a: 'celebrate' };
+      line = { t: 'Terminé ! Je suis fier de toi.', m: 'love', a: 'celebrate' };
     }
     coachSay(line, false, st.k !== 'rest');
   }
   function coachResult(R) {
     var line;
-    if (R.unlocks.length) line = { t: 'Nouveau niveau débloqué : ' + EXM[R.unlocks[0]].name + ' ! Trop fort !', m: 'cool', a: 'celebrate' };
-    else if (R.rankUp) line = { t: 'Tu passes ' + R.rankUp + ' ! Ça se fête.', m: 'proud', a: 'celebrate' };
-    else if (R.badges.length) line = { t: 'Nouveau badge : ' + D.BADGES.find(function (b) { return b.id === R.badges[0]; }).name + ' ! Ta collection grandit.', m: 'excited', a: 'hop' };
-    else line = { t: 'Bien joué ! Tes objectifs s’ajustent pour la prochaine séance.', m: 'proud', a: 'flex' };
+    if (R.unlocks.length) line = { t: 'Niveau débloqué : ' + EXM[R.unlocks[0]].name + ' !', m: 'cool', a: 'celebrate' };
+    else if (R.rankUp) line = { t: 'Tu passes ' + R.rankUp + ' !', m: 'proud', a: 'celebrate' };
+    else if (R.badges.length) line = { t: 'Nouveau badge : ' + D.BADGES.find(function (b) { return b.id === R.badges[0]; }).name + ' !', m: 'excited', a: 'hop' };
+    else line = { t: 'Bien joué ! Objectifs ajustés.', m: 'proud', a: 'flex' };
     coachSay(line, false, true);
   }
 
@@ -2221,28 +2229,14 @@
   /* ================= Visite guidée ================= */
   var TOUR = null, tourType = null, tourRaf = null;
   function tourSteps() {
-    var s = [
-      { view: 'accueil', intro: true, text: 'Bienvenue' + firstName() + ' ! Je te fais visiter l’appli ? Une minute, et tu sauras où tout trouver.', mood: 'happy', anim: 'wave' },
-      { view: 'accueil', target: '.card-hero', text: 'Voici ta séance du jour. Touche « Commencer » quand tu es prêt : je te guide série par série, avec le chrono et les temps de repos.', mood: 'excited', anim: 'hop' },
-      { view: 'accueil', target: '.card-hero .ex-row', wait: true, text: 'Chaque exercice a son tuto animé. Essaie : touche cet exercice !', mood: 'wink', anim: 'wave' },
-      { target: '#sheet .tv', text: 'Le voilà en mouvement ! Le bouton « À éviter » montre l’erreur la plus courante, en rouge. En dessous : muscles travaillés et points clés.', mood: 'determined', anim: 'flex', after: function () { closeSheet(); } },
-      { view: 'accueil', target: '.week-strip', text: 'Chaque séance coche un jour de ta semaine. Tiens ton objectif plusieurs semaines d’affilée pour faire grimper ta série.', mood: 'proud', anim: 'flex' },
-      { view: 'accueil', target: '.traj-teaser', text: 'Ici, ce que tu sauras faire dans 3 mois si tu tiens le rythme. Motivant, non ?', mood: 'excited', anim: 'hop' },
-      { view: 'accueil', target: '.tab[data-view="programme"]', wait: true, text: 'Allons voir ton programme. Touche l’onglet « Programme » en bas de l’écran.', mood: 'happy', anim: 'walk' },
-      { view: 'programme', before: function () { ui.progTab = 'semaine'; }, target: '.plan-item', text: 'Tes séances de la semaine, dans l’ordre. Tu peux lancer n’importe laquelle avec le bouton lecture.', mood: 'happy', anim: 'wave' },
-      { view: 'programme', target: '[data-act="prog-tab"][data-v="trajectoire"]', wait: true, text: 'Touche « Mon planning » pour voir jusqu’où tu peux aller.', mood: 'excited', anim: 'hop' },
-      { view: 'programme', before: function () { ui.progTab = 'trajectoire'; }, target: '.traj-hero', text: 'Ton évolution estimée : pompes, tractions, secondes en ATR. Change d’horizon avec 3 mois, 6 mois ou 1 an.', mood: 'excited', anim: 'celebrate' },
-      { view: 'programme', target: '.tab[data-view="progres"]', wait: true, text: 'Direction tes progrès ! Touche l’onglet « Progrès ».', mood: 'determined', anim: 'walk' },
-      { view: 'progres', target: '.rank-card', text: 'Chaque série te rapporte de l’XP. Monte en rang, de Novice jusqu’à Légende !', mood: 'cool', anim: 'flex' },
-      { view: 'progres', target: '.path', text: 'Ton parcours : chaque famille a ses niveaux. Touche un niveau pour voir son tuto, ou pour dire que tu le maîtrises déjà.', mood: 'determined', anim: 'look' },
-      { view: 'progres', target: '.badges', text: 'Et des badges à collectionner. Lequel auras-tu en premier ?', mood: 'excited', anim: 'hop' },
-      { view: 'progres', target: '.tab[data-view="profil"]', wait: true, text: 'Dernier arrêt : ton profil. Touche l’onglet « Profil ».', mood: 'happy', anim: 'walk' },
-      { view: 'profil', target: '#equip-card', text: 'Ajoute ou retire ton matériel ici : ton programme s’adapte tout seul.', mood: 'wink', anim: 'wave' }
+    return [
+      { view: 'accueil', intro: true, text: 'Bienvenue' + firstName() + ' ! Une visite rapide en 5 étapes ?', mood: 'happy', anim: 'wave' },
+      { view: 'accueil', target: '.card-hero', text: 'Ta séance du jour. Touche un exercice pour son tuto, ou « Commencer » pour démarrer.', mood: 'excited', anim: 'hop' },
+      { view: 'accueil', target: '.tab[data-view="programme"]', wait: true, text: '« Programme » : ta semaine et ton planning de progrès. Touche-le !', mood: 'happy', anim: 'walk' },
+      { view: 'programme', target: '.tab[data-view="progres"]', wait: true, text: '« Progrès » : ton rang, tes niveaux et tes badges. Touche-le !', mood: 'determined', anim: 'walk' },
+      { view: 'progres', target: '.tab[data-view="profil"]', wait: true, text: '« Profil » : matériel, compte et accessibilité. Touche-le !', mood: 'wink', anim: 'walk' },
+      { view: 'accueil', target: '#app .mascot', final: true, text: 'Et moi, je reste ici. Touche-moi pour un conseil !', mood: 'love', anim: 'celebrate' }
     ];
-    if (cloudOn() && !demo && !cloudUser()) s.push({ view: 'profil', target: '#account-card', text: 'Crée un compte gratuit avec ton e-mail pour sauvegarder ta progression et la retrouver sur tous tes appareils.', mood: 'love', anim: 'hop' });
-    s.push({ view: 'profil', target: '#a11y-card', text: 'Texte plus grand, contraste renforcé, lecture à voix haute : règle l’appli comme tu préfères.', mood: 'happy', anim: 'wave' });
-    s.push({ view: 'accueil', target: '#app .mascot', final: true, text: 'Et moi, je reste là, en haut à gauche. Touche-moi quand tu veux un conseil ou un point sur tes progrès. À toi de jouer !', mood: 'love', anim: 'celebrate' });
-    return s;
   }
   function startTour() {
     if (TOUR || PL || !S.onboarded) return;
@@ -2330,8 +2324,8 @@
     closeSheet();
     S.profile.tourDone = true;
     save();
-    if (done) { coachSay({ t: 'Visite terminée ! Lance ta première séance quand tu veux, je serai là à chaque série.', m: 'proud', a: 'celebrate' }, true); confetti(); }
-    else coachSay({ t: 'Pas de souci ! Tu pourras revoir la visite depuis ton profil.', m: 'wink', a: 'wave' }, true);
+    if (done) { coachSay({ t: 'À toi de jouer !', m: 'proud', a: 'celebrate' }, true); confetti(); }
+    else coachSay({ t: 'La visite reste dans ton profil.', m: 'wink', a: 'wave' }, true);
   }
   /* Les étapes « touche ici » avancent dès que la personne touche la zone en surbrillance. */
   document.addEventListener('click', function (e) {
