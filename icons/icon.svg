@@ -1,14 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icône de l'application : la mascotte coach en pixel art, souriante. -->
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b993ff"/><stop offset="1" stop-color="#4a22c9"/></linearGradient>
-    <radialGradient id="h" cx=".3" cy=".2" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#3a1f86"/>
+      <stop offset="0.55" stop-color="#1a0f3d"/>
+      <stop offset="1" stop-color="#07060c"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#9d70ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#9d70ff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="512" height="512" fill="#07060c"/>
-  <rect x="40" y="40" width="432" height="432" rx="120" fill="url(#g)"/>
-  <rect x="40" y="40" width="432" height="432" rx="120" fill="url(#h)"/>
-  <g transform="translate(96 88) scale(10)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 28.2h26" stroke-opacity=".45"/>
-    <path d="M12.4 27.6 14 19.6M19.6 27.6 18 19.6M14 19.6h4M16 19.6v-9.2M16 10.4 14.6 3.4M16 10.4l1.4-7"/>
-    <circle cx="16" cy="23.4" r="2.2"/>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <ellipse cx="256" cy="262" rx="210" ry="170" fill="url(#glow)"/>
+  <ellipse cx="256" cy="376" rx="128" ry="14" fill="#000" fill-opacity="0.35"/>
+  <!-- Sprite 16 × 10,2 pixels, agrandi 18,75 fois et centré (zone sûre des icônes adaptatives) -->
+  <g transform="translate(106 164) scale(18.75)" shape-rendering="crispEdges">
+    <rect x="3" y="7.6" width="1" height="2.6" fill="#9d70ff"/>
+    <rect x="5" y="7.6" width="1" height="2.6" fill="#9d70ff"/>
+    <rect x="10" y="7.6" width="1" height="2.6" fill="#9d70ff"/>
+    <rect x="12" y="7.6" width="1" height="2.6" fill="#9d70ff"/>
+    <rect x="0" y="3" width="2" height="2" fill="#9d70ff"/>
+    <rect x="14" y="3" width="2" height="2" fill="#9d70ff"/>
+    <rect x="2" y="0" width="12" height="8" fill="#9d70ff"/>
+    <rect x="2" y="0" width="12" height="1" fill="#c4a6ff"/>
+    <rect x="2" y="7" width="12" height="1" fill="#6f43ea"/>
+    <!-- yeux rieurs -->
+    <rect x="4" y="3" width="1" height="1" fill="#150a33"/><rect x="5" y="2" width="1" height="1" fill="#150a33"/><rect x="6" y="3" width="1" height="1" fill="#150a33"/>
+    <rect x="9" y="3" width="1" height="1" fill="#150a33"/><rect x="10" y="2" width="1" height="1" fill="#150a33"/><rect x="11" y="3" width="1" height="1" fill="#150a33"/>
+    <!-- joues -->
+    <rect x="2.8" y="4.6" width="1.5" height="0.8" fill="#ff8cc6"/><rect x="11.7" y="4.6" width="1.5" height="0.8" fill="#ff8cc6"/>
+    <!-- sourire -->
+    <rect x="6" y="5" width="1" height="1" fill="#150a33"/><rect x="7" y="6" width="2" height="1" fill="#150a33"/><rect x="9" y="5" width="1" height="1" fill="#150a33"/>
   </g>
 </svg>
