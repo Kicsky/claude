@@ -225,8 +225,7 @@ window.GRAVITE_DATA = (function () {
     'Ton corps est ta salle de sport, et elle est ouverte.',
     'Le niveau d’après commence par la séance d’aujourd’hui.',
     'Lent, propre, contrôlé : c’est comme ça qu’on devient fort.',
-    'Dix minutes valent mieux que zéro.',
-    'La gravité ne lâche rien. Toi non plus.'
+    'Dix minutes valent mieux que zéro.'
   ];
 
   return { FAMILIES: FAMILIES, EX: EX, EQUIP: EQUIP, GOALS: GOALS, TEMPLATES: TEMPLATES, WEEK_PLANS: WEEK_PLANS,
