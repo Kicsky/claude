@@ -1,5 +1,5 @@
 /*
- * Gravité : la mascotte coach, en pixel art violet.
+ * Calisthenics : la mascotte coach, en pixel art violet.
  * Elle cligne des yeux, s'anime de temps en temps et parle dans une bulle,
  * avec une expression du visage adaptée à chaque phrase.
  */

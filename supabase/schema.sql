@@ -1,4 +1,4 @@
--- Gravité : base de données des comptes (Supabase).
+-- Calisthenics : base de données des comptes (Supabase).
 -- À exécuter une fois dans Supabase → SQL Editor → New query → Run.
 
 -- Une ligne par compte : toute la progression au format JSON.

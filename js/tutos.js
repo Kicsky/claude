@@ -1,5 +1,5 @@
 /*
- * Gravité : tutos des exercices.
+ * Calisthenics : tutos des exercices.
  * - INFO : muscles, intérêt et erreurs fréquentes de chaque exercice.
  * - Mini vidéos : un personnage animé (silhouette au trait) qui montre la bonne
  *   exécution et l'erreur la plus courante. Les poses sont générées par familles
