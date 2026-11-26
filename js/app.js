@@ -1,4 +1,4 @@
-/* Gravité : application de calisthenics. Aucune dépendance. */
+/* Calisthenics : application de musculation au poids du corps. Aucune dépendance. */
 (function () {
   'use strict';
 
@@ -1086,7 +1086,7 @@
 
     var cloud = Store.mode === 'cloud' || !!cloudUser();
     html += '<p class="storage-note">' + (cloud ? I.cloud : I.device) + '<span>' + (cloud ? 'Ta progression est enregistrée sur ton compte et sur cet appareil.' : 'Ta progression est enregistrée sur cet appareil. Utilise Exporter pour la garder ailleurs.') + '</span></p>';
-    html += '<p class="faint" style="font-size:12px;text-align:center">Gravité · calisthenics au poids du corps. Échauffe-toi, écoute ton corps et arrête en cas de douleur.</p>';
+    html += '<p class="faint" style="font-size:12px;text-align:center">Calisthenics · musculation au poids du corps. Échauffe-toi, écoute ton corps et arrête en cas de douleur.</p>';
     html += '</section>';
     return html;
   }
@@ -1126,9 +1126,9 @@
   function renderOnboarding() {
     var html = '';
     if (OB.screen === 'welcome') {
-      html = '<section class="view welcome"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div>' +
-        '<h1 class="welcome-title">Plus fort que la <em>gravité</em></h1>' +
-        '<p class="muted" style="font-size:16px;max-width:34ch">Un programme de calisthenics qui grandit avec toi : des premières pompes jusqu’à l’ATR, un niveau après l’autre. Avec ou sans matériel.</p>' +
+      html = '<section class="view welcome"><div class="brand">' + SLOT + '</div>' +
+        '<h1 class="welcome-title"><em>Calisthenics</em></h1>' +
+        '<p class="muted" style="font-size:16px;max-width:36ch">Ton programme de musculation au poids du corps : pompes, tractions, squats, gainage et ATR. Il s’adapte à ton niveau et à ton matériel, et progresse avec toi, un niveau après l’autre.</p>' +
         '<div class="ladder">' + D.FAMILIES.map(function (f, i) {
           var full = fullChain(f.id), on = [3, 4, 1, 2, 0][i];
           return '<div class="ladder-row" style="--fc:' + f.color + '">' + picto(f.id) + '<span class="t"><b>' + f.name + '</b><span>Jusqu’à ' + esc(full[full.length - 1].name.toLowerCase()) + '</span></span>' +
@@ -1145,7 +1145,7 @@
     }
     if (OB.screen === 'ready') {
       var s = S, sim = simulate(s, 52), first = milestones(sim, 52)[0];
-      html = '<section class="view ob"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div><div><p class="eyebrow" style="color:var(--violet-2)">C’est prêt</p><h1 class="title-xl" style="margin-top:6px">Ton programme</h1>' +
+      html = '<section class="view ob"><div class="brand">' + SLOT + '<b>CALISTHENICS</b></div><div><p class="eyebrow" style="color:var(--violet-2)">C’est prêt</p><h1 class="title-xl" style="margin-top:6px">Ton programme</h1>' +
         '<p class="muted" style="margin-top:8px">' + s.profile.days + ' séances par semaine, objectif ' + D.GOALS[s.profile.goal].name.toLowerCase() + '. Voici ton point de départ :</p></div>' + ladder(s) +
         '<div class="card-hero" style="padding:18px"><p class="eyebrow" style="color:var(--violet-2)">Dans 3 mois, si tu tiens le rythme</p>' + teaserGrid(sim.snaps[13].cap) +
         (first ? '<p class="teaser-next">' + I.trend + '<span>Première étape : <b>' + esc(first.txt) + '</b>, ' + atWeek(first.w) + '</span></p>' : '') + '</div>';
@@ -1158,7 +1158,7 @@
       return html;
     }
     var qs = obQuestions(), q = qs[OB.qi], last = OB.qi === qs.length - 1;
-    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div><span class="faint num" style="font-size:13px">' + (OB.qi + 1) + ' / ' + qs.length + '</span></div>' +
+    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + SLOT + '<b>CALISTHENICS</b></div><span class="faint num" style="font-size:13px">' + (OB.qi + 1) + ' / ' + qs.length + '</span></div>' +
       '<div class="ob-steps" style="grid-template-columns:repeat(' + qs.length + ',1fr)">' + qs.map(function (_, k) { return '<i class="' + (k <= OB.qi ? 'on' : '') + '"></i>'; }).join('') + '</div>';
     if (q === 'goal') {
       html += '<div><h1 class="title-lg">Faisons connaissance</h1><p class="muted" style="margin-top:6px">Ton prénom est facultatif. Ton objectif règle le nombre de séries et les temps de repos.</p></div>' +
@@ -1428,7 +1428,7 @@
       case 'do-import':
         var parsed = null;
         try { parsed = normalize(JSON.parse($('#im-data').value)); } catch (err) { parsed = null; }
-        if (!parsed) { var er = $('#im-err'); er.hidden = false; er.textContent = 'Ce texte n’est pas une progression Gravité valide. Vérifie que tu as tout copié, du premier { au dernier }.'; break; }
+        if (!parsed) { var er = $('#im-err'); er.hidden = false; er.textContent = 'Ce texte n’est pas une progression Calisthenics valide. Vérifie que tu as tout copié, du premier { au dernier }.'; break; }
         parsed.onboarded = true;
         REAL = S = parsed; demo = false; save(); closeSheet(); render(); toast('Progression importée');
         break;

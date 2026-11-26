@@ -1,4 +1,4 @@
-# Mettre Gravité en ligne, gratuitement, avec des comptes par e-mail
+# Mettre Calisthenics en ligne, gratuitement, avec des comptes par e-mail
 
 Objectif : un site public que tout le monde peut ouvrir sans compte Claude, avec des comptes
 gratuits (e-mail + mot de passe) pour sauvegarder sa progression.
@@ -85,5 +85,5 @@ Pour un site ouvert à tous :
   Il se relance depuis le tableau de bord Supabase. Avec des utilisateurs réguliers, cela n'arrive pas.
 - **Suppression de compte** : le bouton *Supprimer mon compte* efface le compte et sa progression en ligne
   (fonction `delete_account` créée à l'étape 1).
-- **Installation sur téléphone** : sur le site publié, « Ajouter à l'écran d'accueil » installe Gravité comme une application,
+- **Installation sur téléphone** : sur le site publié, « Ajouter à l'écran d'accueil » installe Calisthenics comme une application,
   utilisable hors ligne.

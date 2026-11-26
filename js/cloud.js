@@ -1,5 +1,5 @@
 /*
- * Gravité : comptes par e-mail et sauvegarde en ligne (Supabase).
+ * Calisthenics : comptes par e-mail et sauvegarde en ligne (Supabase).
  * Actif seulement si js/config.js contient l'URL et la clé du projet.
  */
 window.GraviteCloud = (function () {

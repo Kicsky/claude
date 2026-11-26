@@ -1,6 +1,6 @@
 {
-  "name": "Gravité Calisthenics",
-  "short_name": "Gravité",
+  "name": "Calisthenics",
+  "short_name": "Calisthenics",
   "description": "Programme de calisthenics au poids du corps, avec niveaux à débloquer et suivi de progression.",
   "lang": "fr",
   "start_url": "./index.html#accueil",

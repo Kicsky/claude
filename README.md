@@ -1,4 +1,4 @@
-# Gravité · calisthenics au poids du corps
+# Calisthenics · musculation au poids du corps
 
 Application web de musculation au poids du corps : pompes, tractions, squats, gainage et ATR.
 Interface sombre et violette, boutons en verre liquide, et une progression par niveaux qui donne envie de revenir.

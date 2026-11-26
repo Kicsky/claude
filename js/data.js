@@ -1,4 +1,4 @@
-/* Gravité : données du programme (familles, exercices, séances, badges). */
+/* Calisthenics : données du programme (familles, exercices, séances, badges). */
 window.GRAVITE_DATA = (function () {
   'use strict';
 

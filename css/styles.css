@@ -1,5 +1,5 @@
 /*
-  Gravité : interface sombre, accents violets, verre liquide.
+  Calisthenics : interface sombre, accents violets, verre liquide.
   Mise en page : une colonne type app mobile (max 560 px), barre d’onglets en verre en bas,
   lecteur de séance plein écran par-dessus.
 */
@@ -408,7 +408,7 @@ textarea.input { min-height: 120px; padding: 12px 14px; font-family: ui-monospac
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark { width: 40px; height: 40px; }
 .brand b { font-family: var(--font-display); font-weight: 900; font-stretch: 125%; font-size: 20px; letter-spacing: 0.02em; }
-.welcome-title { font-size: clamp(40px, 12vw, 62px); font-stretch: 125%; font-weight: 900; text-transform: uppercase; line-height: 0.92; letter-spacing: -0.01em; }
+.welcome-title { font-size: clamp(28px, 8.6vw, 52px); font-stretch: 125%; font-weight: 900; text-transform: uppercase; line-height: 0.92; letter-spacing: -0.01em; }
 .welcome-title em { font-style: normal; background: linear-gradient(100deg, #c7aaff, #9d70ff 50%, #e07bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ladder { display: grid; gap: 8px; }
 .ladder-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
