@@ -29,8 +29,8 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
   les muscles travaillés, l'intérêt de l'exercice, les points clés et les erreurs fréquentes. La mini vidéo s'affiche aussi pendant la séance.
 - **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 16 badges, historique.
 - **Mode exemple** pour voir l'app remplie avant de commencer.
-- **Visite guidée** avec la mascotte : après le questionnaire, elle fait le tour des 4 onglets en 18 étapes
-  (certaines se font en touchant soi-même l'écran). À revoir depuis le profil.
+- **Visite guidée** avec la mascotte : après le questionnaire, un tour rapide des 4 onglets en 5 étapes
+  (en touchant soi-même chaque onglet). À revoir depuis le profil.
 - **Comptes gratuits par e-mail** (facultatifs) : inscription, connexion, mot de passe oublié, suppression du compte,
   et sauvegarde automatique de la progression pour la retrouver sur tous ses appareils. Voir la mise en ligne ci-dessous.
 - **Accessibilité** : texte plus grand, contraste renforcé, animations réduites, lecture à voix haute du coach et des consignes,
