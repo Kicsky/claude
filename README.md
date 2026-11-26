@@ -21,6 +21,12 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
   (pompes d'affilée, tractions, secondes en ATR contre le mur et sans appui), courbe semaine par semaine
   et dates estimées de chaque nouveau niveau. L'estimation rejoue ton programme avec les mêmes règles de
   progression et ton taux de réussite réel, et se recalcule après chaque séance.
+- **Mascotte coach** : un petit personnage en pixel art violet, en haut à gauche de chaque écran (et pendant les séances).
+  Il parle dans une bulle avec des expressions (content, déterminé, surpris, fier, endormi…) : il pousse à lancer la séance,
+  annonce les progrès, prévient quand un niveau est proche et encourage pendant les séries. Touche-le pour qu'il te parle.
+  Réglage « Coach bavard » dans le profil.
+- **Tutos pour chaque exercice** : touche un exercice pour voir une mini vidéo animée (bonne exécution / erreur à éviter),
+  les muscles travaillés, l'intérêt de l'exercice, les points clés et les erreurs fréquentes. La mini vidéo s'affiche aussi pendant la séance.
 - **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 16 badges, historique.
 - **Mode exemple** pour voir l'app remplie avant de commencer.
 - Sauvegarde automatique sur l'appareil, export / import de la progression.
@@ -44,6 +50,8 @@ L'app fonctionne ensuite hors ligne.
 index.html            page d'entrée
 css/styles.css        thème sombre, verre liquide, animations
 js/data.js            exercices, parcours, séances, badges
+js/mascot.js          mascotte coach : sprite, expressions, bulles
+js/tutos.js           fiches et animations des 55 exercices
 js/app.js             logique du programme, écrans, lecteur de séance
 manifest.webmanifest  installation sur l'écran d'accueil
 sw.js                 cache hors ligne

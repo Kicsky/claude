@@ -1,6 +1,6 @@
 /* Gravité : cache hors ligne de l'application. */
-const CACHE = 'gravite-v1';
-const SHELL = ['./', './index.html', './css/styles.css', './js/data.js', './js/app.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'gravite-v2';
+const SHELL = ['./', './index.html', './css/styles.css', './js/data.js', './js/mascot.js', './js/tutos.js', './js/app.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

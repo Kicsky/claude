@@ -112,7 +112,7 @@
   function blankState() {
     return {
       v: 1, createdAt: Date.now(), updatedAt: 0, onboarded: false,
-      profile: { name: '', goal: 'muscle', days: 3, sound: true, equip: { bar: true, table: true, chair: true, dips: false, band: false } },
+      profile: { name: '', goal: 'muscle', days: 3, sound: true, coach: true, equip: { bar: true, table: true, chair: true, dips: false, band: false } },
       prog: { push: 'pompes', pull: 'rowing-australien', legs: 'squats', core: 'planche', atr: 'pompes-pike' },
       targets: {}, xp: 0, rot: 0,
       totals: { sessions: 0, reps: 0, secs: 0 },
@@ -574,6 +574,7 @@
     var changed = v !== view;
     view = v;
     render(changed);
+    if (changed) coachView();
     try { if (location.hash.slice(1) !== v) location.hash = v; } catch (e) { /* ignore */ }
     if (changed) window.scrollTo(0, 0);
   }
@@ -588,6 +589,7 @@
       tabbar.hidden = true;
       appEl.classList.add('no-tabs');
       appEl.innerHTML = renderOnboarding();
+      dockMascot();
       return;
     }
     tabbar.hidden = false;
@@ -597,14 +599,15 @@
     $$('.tab', tabbar).forEach(function (t) {
       if (t.dataset.view === view) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
+    dockMascot();
     requestAnimationFrame(function () { moveLens(animateLens); });
   }
 
   function exRow(it) {
     var e = it.ex;
-    return '<div class="ex-row">' + picto(e.f) +
-      '<div class="name">' + esc(e.name) + '<small>' + FAM[e.f].name + (e.side ? ' · par côté' : '') + '</small></div>' +
-      '<div class="dose">' + it.sets + ' × ' + it.target + unitShort(e) + '</div></div>';
+    return '<button class="ex-row" type="button" data-act="ex-info" data-id="' + e.id + '" aria-label="Tuto : ' + esc(e.name) + '">' + picto(e.f) +
+      '<span class="name">' + esc(e.name) + '<small>' + FAM[e.f].name + (e.side ? ' · par côté' : '') + '</small></span>' +
+      '<span class="dose">' + it.sets + ' × ' + it.target + unitShort(e) + '</span></button>';
   }
 
   /* ================= Accueil ================= */
@@ -636,7 +639,7 @@
     var sim = simulate(s, 52), uw = unlockWeeks(sim);
 
     var html = '<section class="view">';
-    html += '<header class="topbar"><div class="hello"><p class="eyebrow">' + fmtDate(now, { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>' +
+    html += '<header class="topbar">' + SLOT + '<div class="hello"><p class="eyebrow">' + fmtDate(now, { weekday: 'long', day: 'numeric', month: 'long' }) + '</p>' +
       '<h1 class="title-lg">' + hello + '</h1><p class="muted">' + mood + '</p></div>' +
       '<button class="chip violet" type="button" data-act="nav" data-view="progres" aria-label="Rang ' + rank.cur.name + ', ' + fmtInt(s.xp) + ' XP">' + I.bolt + rank.cur.name + '</button></header>';
 
@@ -693,7 +696,7 @@
   /* ================= Programme ================= */
   function renderProgram() {
     var s = S;
-    var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Semaine ' + weekNumber(s) + '</p><h1 class="title-xl">Programme</h1></div></header>';
+    var html = '<section class="view"><header class="topbar">' + SLOT + '<div class="topbar-text"><p class="eyebrow">Semaine ' + weekNumber(s) + '</p><h1 class="title-xl">Programme</h1></div></header>';
     html += '<div class="seg" role="group" aria-label="Affichage du programme">' +
       '<button type="button" data-act="prog-tab" data-v="semaine" aria-pressed="' + (ui.progTab === 'semaine') + '">Ma semaine</button>' +
       '<button type="button" data-act="prog-tab" data-v="trajectoire" aria-pressed="' + (ui.progTab === 'trajectoire') + '">Mon planning</button></div>';
@@ -868,7 +871,7 @@
   /* ================= Progrès ================= */
   function renderProgress() {
     var s = S, r = rankOf(s.xp);
-    var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Ton parcours</p><h1 class="title-xl">Progrès</h1></div></header>';
+    var html = '<section class="view"><header class="topbar">' + SLOT + '<div class="topbar-text"><p class="eyebrow">Ton parcours</p><h1 class="title-xl">Progrès</h1></div></header>';
 
     html += '<article class="card rank-card"><div class="rank-top">' + emblem(r.i) + '<div style="min-width:0"><p class="eyebrow">Rang ' + (r.i + 1) + ' sur ' + D.RANKS.length + '</p>' +
       '<h2 class="rank-name">' + r.cur.name + '</h2><p class="faint" style="font-size:13px"><span class="num">' + fmtInt(s.xp) + '</span> XP</p></div></div>' +
@@ -1046,7 +1049,7 @@
   /* ================= Profil ================= */
   function renderProfile() {
     var s = S, p = s.profile;
-    var html = '<section class="view"><header class="topbar"><div><p class="eyebrow">Réglages</p><h1 class="title-xl">Profil</h1></div></header>';
+    var html = '<section class="view"><header class="topbar">' + SLOT + '<div class="topbar-text"><p class="eyebrow">Réglages</p><h1 class="title-xl">Profil</h1></div></header>';
     html += '<div class="card" style="display:grid;gap:18px"><div class="field"><label for="pf-name">Prénom</label><input id="pf-name" class="input" maxlength="30" autocomplete="given-name" placeholder="Ton prénom" value="' + esc(p.name) + '"></div>' +
       '<div class="field"><span class="label">Objectif</span><div class="seg" role="group" aria-label="Objectif">' + Object.keys(D.GOALS).map(function (k) {
         return '<button type="button" data-act="pf-goal" data-v="' + k + '" aria-pressed="' + (p.goal === k) + '">' + { force: 'Force', muscle: 'Muscle', forme: 'Forme' }[k] + '</button>';
@@ -1062,7 +1065,9 @@
     html += '<p class="faint" style="font-size:12.5px;margin-top:-8px">Ton programme et ton planning s’adaptent dès que tu changes ton matériel.</p>';
 
     html += '<div class="card"><div class="toggle-row"><span class="t"><b>Sons et vibrations</b><span>Signal à la fin des repos et des chronos</span></span>' +
-      '<button class="switch" type="button" role="switch" aria-label="Sons et vibrations" aria-checked="' + p.sound + '" data-act="pf-sound"></button></div></div>';
+      '<button class="switch" type="button" role="switch" aria-label="Sons et vibrations" aria-checked="' + p.sound + '" data-act="pf-sound"></button></div>' +
+      '<div class="toggle-row"><span class="t"><b>Coach bavard</b><span>La mascotte te parle d’elle-même (touche-la pour l’entendre)</span></span>' +
+      '<button class="switch" type="button" role="switch" aria-label="Coach bavard" aria-checked="' + (p.coach !== false) + '" data-act="pf-coach"></button></div></div>';
 
     html += '<div class="card" style="display:grid;gap:10px"><button class="btn block" type="button" data-act="retake">' + I.refresh + 'Refaire le test de niveau</button>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn" type="button" data-act="export">' + I.copy + 'Exporter</button><button class="btn" type="button" data-act="import">Importer</button></div>' +
@@ -1110,7 +1115,7 @@
   function renderOnboarding() {
     var html = '';
     if (OB.screen === 'welcome') {
-      html = '<section class="view welcome"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div>' +
+      html = '<section class="view welcome"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div>' +
         '<h1 class="welcome-title">Plus fort que la <em>gravité</em></h1>' +
         '<p class="muted" style="font-size:16px;max-width:34ch">Un programme de calisthenics qui grandit avec toi : des premières pompes jusqu’à l’ATR, un niveau après l’autre. Avec ou sans matériel.</p>' +
         '<div class="ladder">' + D.FAMILIES.map(function (f, i) {
@@ -1128,7 +1133,7 @@
     }
     if (OB.screen === 'ready') {
       var s = S, sim = simulate(s, 52), first = milestones(sim, 52)[0];
-      html = '<section class="view ob"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div><div><p class="eyebrow" style="color:var(--violet-2)">C’est prêt</p><h1 class="title-xl" style="margin-top:6px">Ton programme</h1>' +
+      html = '<section class="view ob"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div><div><p class="eyebrow" style="color:var(--violet-2)">C’est prêt</p><h1 class="title-xl" style="margin-top:6px">Ton programme</h1>' +
         '<p class="muted" style="margin-top:8px">' + s.profile.days + ' séances par semaine, objectif ' + D.GOALS[s.profile.goal].name.toLowerCase() + '. Voici ton point de départ :</p></div>' + ladder(s) +
         '<div class="card-hero" style="padding:18px"><p class="eyebrow" style="color:var(--violet-2)">Dans 3 mois, si tu tiens le rythme</p>' + teaserGrid(sim.snaps[13].cap) +
         (first ? '<p class="teaser-next">' + I.trend + '<span>Première étape : <b>' + esc(first.txt) + '</b>, ' + atWeek(first.w) + '</span></p>' : '') + '</div>';
@@ -1141,7 +1146,7 @@
       return html;
     }
     var qs = obQuestions(), q = qs[OB.qi], last = OB.qi === qs.length - 1;
-    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + BRAND + '<b>GRAVITÉ</b></div><span class="faint num" style="font-size:13px">' + (OB.qi + 1) + ' / ' + qs.length + '</span></div>' +
+    html = '<section class="view ob"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand">' + SLOT + '<b>GRAVITÉ</b></div><span class="faint num" style="font-size:13px">' + (OB.qi + 1) + ' / ' + qs.length + '</span></div>' +
       '<div class="ob-steps" style="grid-template-columns:repeat(' + qs.length + ',1fr)">' + qs.map(function (_, k) { return '<i class="' + (k <= OB.qi ? 'on' : '') + '"></i>'; }).join('') + '</div>';
     if (q === 'goal') {
       html += '<div><h1 class="title-lg">Faisons connaissance</h1><p class="muted" style="margin-top:6px">Ton prénom est facultatif. Ton objectif règle le nombre de séries et les temps de repos.</p></div>' +
@@ -1229,12 +1234,13 @@
       '<div class="summary-chips"><span class="chip violet">' + status + '</span><span class="chip">' + (e.type === 'time' ? 'Chrono' : 'Répétitions') + (e.side ? ', par côté' : '') + '</span>' +
       (idx >= 0 ? '<span class="chip">Objectif ' + targetOf(e, S) + unitShort(e) + '</span>' : '') +
       (w != null ? '<span class="chip">' + I.trend + 'Estimé ' + atWeek(w) + '</span>' : '') + '</div>' +
-      '<div class="cues">' + e.cues.map(function (q) { return '<div>' + I.check + '<span>' + esc(q) + '</span></div>'; }).join('') + '</div>' +
+      tutoBlock(e) +
       '<p class="muted" style="font-size:14px">' + (idx < 0 ? 'Ajoute ce matériel dans ton profil pour intégrer ce niveau à ton parcours.' : next ? 'Pour débloquer <b>' + esc(next.name) + '</b> : tiens ' + e.unlock + unitShort(e) + ' sur tes ' + g.sets + ' séries principales.' : 'C’est le dernier niveau de cette famille avec ton matériel. Continue de monter l’objectif.') + '</p>' +
       '<div class="sheet-actions">' + (idx >= 0 && idx !== ci ? '<button class="btn primary block" type="button" data-act="set-level" data-id="' + e.id + '">' + (idx < ci ? 'Revenir à ce niveau' : 'Je maîtrise déjà : passer à ce niveau') + '</button>' : '') +
       (idx < 0 ? '<button class="btn primary block" type="button" data-act="nav" data-view="profil">Gérer mon matériel</button>' : '') +
       '<button class="btn block ghost" type="button" data-act="sheet-close">Fermer</button></div>';
     openSheet(html, e.name);
+    mountTuto($('#sheet .tv-host'), e);
   }
 
   /* ================= Effet verre liquide ================= */
@@ -1295,8 +1301,8 @@
     switch (act) {
       case 'nav': closeSheet(); go(ds.view); break;
       case 'go-traj': ui.progTab = 'trajectoire'; go('programme'); break;
-      case 'prog-tab': ui.progTab = ds.v; render(); break;
-      case 'traj-h': ui.h = +ds.v; ui.msAll = false; render(); break;
+      case 'prog-tab': ui.progTab = ds.v; render(); coachView(); break;
+      case 'traj-h': ui.h = +ds.v; ui.msAll = false; render(); coachView(true); break;
       case 'traj-metric': ui.metric = ds.v; render(); break;
       case 'ms-toggle': ui.msAll = !ui.msAll; render(); break;
       case 'start': startWorkout(ds.tpl); break;
@@ -1331,6 +1337,14 @@
         S.profile.equip[ds.id] = !S.profile.equip[ds.id];
         save(); el.setAttribute('aria-checked', String(S.profile.equip[ds.id]));
         toast(EQ[ds.id].name + (S.profile.equip[ds.id] ? ' ajouté : programme adapté' : ' retiré : programme adapté'));
+        break;
+      case 'pf-coach':
+        S.profile.coach = S.profile.coach === false; save(); el.setAttribute('aria-checked', String(S.profile.coach));
+        if (S.profile.coach) coachSay({ t: 'Super, je reste avec toi !', m: 'happy', a: 'hop' }, true); else if (coach) coach.hide();
+        break;
+      case 'tv-mode':
+        if (sheetTv) sheetTv.setMode(ds.v);
+        $$('[data-act="tv-mode"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === el)); });
         break;
       case 'pf-sound':
         S.profile.sound = !S.profile.sound; save(); el.setAttribute('aria-checked', String(S.profile.sound));
@@ -1374,7 +1388,7 @@
         break;
 
       case 'demo-start':
-        demo = true; S = makeDemo(); view = 'accueil'; render(); window.scrollTo(0, 0); toast('Exemple chargé : 10 semaines fictives'); break;
+        demo = true; S = makeDemo(); view = 'accueil'; render(); window.scrollTo(0, 0); coachView(true); toast('Exemple chargé : 10 semaines fictives'); break;
       case 'demo-exit':
         demo = false; S = REAL;
         if (!S.onboarded) OB = newOB({ active: true, screen: 'q', qi: 0 });
@@ -1398,13 +1412,13 @@
           if (OB.qi < obQuestions().length - 1) OB.qi++;
           else { applyOnboarding(); OB.screen = 'ready'; }
         }
-        render(); window.scrollTo(0, 0); break;
+        render(); window.scrollTo(0, 0); coachView(); break;
       case 'ob-back':
         if (OB.retake && OB.qi <= 1) { OB = newOB(); render(); break; }
         if (OB.qi === 0) OB = newOB(); else OB.qi--;
         render(); break;
       case 'ob-done':
-        OB = newOB(); view = 'accueil'; render(); window.scrollTo(0, 0); break;
+        OB = newOB(); view = 'accueil'; render(); window.scrollTo(0, 0); coachView(true); break;
     }
   }
 
@@ -1501,6 +1515,7 @@
     };
     if (PL.i >= PL.steps.length) PL.i = PL.steps.length - 1;
     ensureAudio(); requestWake();
+    if (coach) coach.hide();
     document.body.style.overflow = 'hidden';
     PL.tick = setInterval(tick, 200);
     enterStep();
@@ -1510,6 +1525,7 @@
     clearInterval(PL.tick);
     PL = null;
     releaseWake();
+    if (coach) coach.hide();
     playerRoot.innerHTML = '';
     document.body.style.overflow = '';
     closeSheet();
@@ -1532,6 +1548,7 @@
     }
     writeResume();
     renderPlayer();
+    coachStep();
   }
   function nextStep() { if (PL.i < PL.steps.length - 1) { PL.i++; enterStep(); } }
   function fmtClock(ms) { var t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + pad(t % 60); }
@@ -1555,7 +1572,7 @@
       var n = PL.log[i].filter(function (v) { return v != null; }).length;
       return '<i><b style="--p:' + Math.round(n / it.sets * 100) + '%"></b></i>';
     }).join('') + '</div>';
-    var top = '<div><div class="player-top"><button class="btn icon sm ghost" type="button" data-act="pl-close" aria-label="Quitter la séance">' + I.close + '</button>' +
+    var top = '<div><div class="player-top"><button class="btn icon sm ghost" type="button" data-act="pl-close" aria-label="Quitter la séance">' + I.close + '</button>' + SLOT +
       '<span class="ttl">' + esc(sess.name) + '</span><span class="clock" id="pl-clock">' + fmtClock(Date.now() - PL.startedAt) + '</span></div>' + seg + '</div>';
 
     if (st.k === 'warm') {
@@ -1565,7 +1582,7 @@
       actions = '<button class="btn primary lg block" type="button" data-act="pl-next">' + I.play + 'Échauffement terminé</button>';
     } else if (st.k === 'set') {
       var it = sess.items[st.i], e = it.ex, isTime = e.type === 'time';
-      body = '<div class="stage">' + picto(e.f, 'lg') + '<span class="set-label">Série ' + (st.s + 1) + ' / ' + it.sets + (it.main ? '' : ' · volume') + '</span>' +
+      body = '<div class="stage"><div class="tv-host tv-mini" data-act="pl-info" role="button" tabindex="0" aria-label="Voir le tuto complet"></div><span class="set-label">Série ' + (st.s + 1) + ' / ' + it.sets + (it.main ? '' : ' · volume') + '</span>' +
         '<h2 class="ex-title">' + esc(e.name) + '</h2>';
       if (!isTime) {
         body += '<div><div class="big-target">' + it.target + '</div><div class="big-unit">' + unitLong(e, it.target) + '</div></div>';
@@ -1587,7 +1604,7 @@
         actions = '<button class="btn lg block" type="button" data-act="pl-hold-stop">J’arrête ici</button>';
       } else {
         actions = '<button class="btn primary lg block" type="button" data-act="pl-set-done">' + I.check + 'Série validée</button>' +
-          '<div class="row"><button class="btn ghost" type="button" data-act="pl-info">' + I.info + 'Niveaux</button><button class="btn ghost" type="button" data-act="pl-skip">' + I.skip + 'Passer</button></div>';
+          '<div class="row"><button class="btn ghost" type="button" data-act="pl-info">' + I.play + 'Tuto</button><button class="btn ghost" type="button" data-act="pl-skip">' + I.skip + 'Passer</button></div>';
       }
     } else if (st.k === 'rest') {
       var nx = sess.items[st.ni], left2 = Math.max(0, (PL.endAt - Date.now()) / 1000);
@@ -1628,6 +1645,8 @@
       }
     }
     playerRoot.innerHTML = '<div class="player" role="dialog" aria-modal="true" aria-label="Séance en cours"><div class="player-inner">' + top + body + '<div class="player-actions">' + actions + '</div></div></div>';
+    dockMascot();
+    if (st.k === 'set') mountTuto(playerRoot.querySelector('.tv-mini'), sess.items[st.i].ex, true);
     if (st.k === 'done' && PL.phase === 'res') animateXp(PL.result.xp);
   }
   function reward(icon, title, sub) {
@@ -1699,6 +1718,7 @@
         PL.hold.endAt = Date.now() + PL.sess.items[st.i].target * 1000;
         PL.hold.startedAt = Date.now();
         renderPlayer();
+        coachSay({ t: 'Tiens bon ! Respire calmement, je compte avec toi.', m: 'effort' });
         break;
       case 'pl-hold-stop':
         PL.hold.state = 'end';
@@ -1725,6 +1745,7 @@
         res.rankUp = after > before ? D.RANKS[after].name : null;
         PL.result = res; PL.phase = 'res';
         renderPlayer();
+        coachResult(res);
         break;
       case 'pl-close':
         if (st.k === 'done') { closePlayer(); break; }
@@ -1772,8 +1793,180 @@
     })(t0);
   }
 
+  /* ================= Coach (mascotte) et tutos ================= */
+  var SLOT = '<div class="mascot-slot"></div>';
+  var coach = window.GraviteCoach ? window.GraviteCoach.create({ onTap: coachTap }) : null;
+  var coachSeen = {}, lastAuto = 0, tapIdx = 0, sheetTv = null;
+
+  /* Place la mascotte en haut à gauche de l'écran affiché (page ou séance). */
+  function dockMascot() {
+    if (!coach) return;
+    var slot = (PL && playerRoot.querySelector('.mascot-slot')) || appEl.querySelector('.mascot-slot');
+    if (slot && coach.el.parentNode !== slot) slot.appendChild(coach.el);
+    var last = S.history[S.history.length - 1];
+    coach.setBase(S.onboarded && last && daysBetween(new Date(last.at), new Date()) >= 7 ? 'sleepy' : 'neutral');
+  }
+  /* force : quand on touche la mascotte, elle répond toujours. */
+  /* urgent : phrase attendue (nouvel écran, étape de séance), sans délai minimal. */
+  function coachSay(line, force, urgent) {
+    if (!coach || !line) return;
+    if (!force) {
+      if (S.profile.coach === false) return;
+      if (!urgent && Date.now() - lastAuto < (PL ? 3500 : 9000)) return;
+    }
+    lastAuto = Date.now();
+    coach.say(line.t, line.m, line.a);
+  }
+  function lc(t) { return t.charAt(0).toLowerCase() + t.slice(1); }
+  function firstName() { return S.profile.name ? ' ' + S.profile.name : ''; }
+
+  function nearLine() {
+    var x = nextUnlocks(S).filter(function (n) { return n.pct >= 0.7; })[0];
+    if (!x) return null;
+    var left = x.e.unlock - x.t;
+    if (left <= 0) return { t: 'Tu peux débloquer ' + x.nx.name + ' dès ta prochaine séance : tiens ' + x.e.unlock + unitShort(x.e) + ' sur toutes tes séries !', m: 'excited', a: 'hop' };
+    return { t: 'Plus que ' + left + (x.e.type === 'time' ? ' s' : ' répétition' + (left > 1 ? 's' : '')) + ' à gagner sur ' + x.e.name.toLowerCase() + ' et tu débloques ' + x.nx.name + ' !', m: 'excited', a: 'hop' };
+  }
+  function homeLine() {
+    var s = S, now = new Date(), last = s.history[s.history.length - 1], since = last ? daysBetween(new Date(last.at), now) : null;
+    var goal = s.profile.days, weekDone = sessionsInWeek(weekStart(now), s).length, sess = buildSession(nextTpl(s), s), nm = firstName();
+    if (since === null) return { t: 'Salut' + nm + ' ! Je suis ton coach. On attaque ta première séance ? ' + estimate(sess) + ' minutes, et je te guide à chaque série.', m: 'happy', a: 'wave' };
+    if (since === 0) return { t: 'Séance faite aujourd’hui, bravo' + nm + ' ! Tes muscles se reconstruisent pendant le repos.', m: 'love', a: 'hop' };
+    if (weekDone >= goal) return { t: 'Objectif de la semaine atteint ! Tu es une machine.', m: 'cool', a: 'flex' };
+    var near = nearLine();
+    if (near && since <= 4) return near;
+    if (since <= 2) return { t: 'Prêt pour « ' + sess.name + ' » ? ' + estimate(sess) + ' minutes et c’est plié.', m: 'determined', a: 'flex' };
+    if (since <= 6) return { t: since + ' jours sans séance… je commence à rouiller, moi ! On s’y remet ?', m: 'surprised', a: 'shake' };
+    return { t: 'Tu m’as manqué' + nm + ' ! On reprend en douceur aujourd’hui ?', m: 'sad', a: 'wave' };
+  }
+  function viewLine() {
+    var s = S;
+    if (view === 'accueil') return homeLine();
+    if (view === 'programme') {
+      if (ui.progTab === 'trajectoire') {
+        var v = capView(simulate(s, 52).snaps[ui.h].cap)[0];
+        return { t: 'Dans ' + { 13: '3 mois', 26: '6 mois', 52: '1 an' }[ui.h] + ', tu pourrais enchaîner ' + v.n + ' ' + v.unit + ' ! Ça donne envie, non ?', m: 'excited', a: 'hop' };
+      }
+      return { t: 'Ta prochaine séance : ' + D.TEMPLATES[nextTpl(s)].name + '. Touche un exercice pour voir son tuto animé.', m: 'happy', a: 'wave' };
+    }
+    if (view === 'progres') {
+      var r = rankOf(s.xp), n = s.unlocks.length;
+      return { t: 'Rang ' + r.cur.name + (r.nxt ? ' : encore ' + fmtInt(r.nxt.xp - s.xp) + ' XP pour devenir ' + r.nxt.name : '') + '. ' +
+        (n ? n + ' niveau' + (n > 1 ? 'x' : '') + ' débloqué' + (n > 1 ? 's' : '') + ', continue !' : 'Ton premier niveau t’attend.'), m: 'cool', a: 'flex' };
+    }
+    return { t: 'Dis-moi ce que tu as comme matériel : j’adapte tout ton programme.', m: 'wink', a: 'wave' };
+  }
+  var TIPS = [
+    { t: 'Astuce : serre les fessiers pendant les pompes. Ton dos te dira merci.', m: 'wink' },
+    { t: 'Lent à la descente, contrôlé à la montée : c’est le secret de la force.', m: 'determined' },
+    { t: 'C’est pendant le sommeil que tes muscles grandissent. Vise 7 à 9 heures.', m: 'sleepy' },
+    { t: 'Bois de l’eau pendant les repos, même sans soif.', m: 'happy' },
+    { t: 'Une séance courte vaut mieux qu’une séance sautée.', m: 'proud' },
+    { t: 'Échauffe bien tes poignets avant l’ATR : ils portent tout ton poids !', m: 'surprised' },
+    { t: 'Touche un exercice pour voir son tuto animé et les erreurs à éviter.', m: 'excited' },
+    { t: 'Des protéines à chaque repas aident tes muscles à se réparer.', m: 'happy' }
+  ];
+  function obLine() {
+    if (OB.screen === 'welcome') return { t: 'Salut ! Je suis ton coach. Quelques questions et je te prépare un programme sur mesure.', m: 'happy', a: 'wave' };
+    if (OB.screen === 'ready') {
+      var v = capView(simulate(S, 52).snaps[13].cap)[0];
+      return { t: 'Ton programme est prêt ! Dans 3 mois : environ ' + v.n + ' ' + v.unit + '. On y va ?', m: 'excited', a: 'celebrate' };
+    }
+    return {
+      goal: { t: 'Ton prénom, c’est pour que je puisse t’encourager !', m: 'wink', a: 'wave' },
+      equip: { t: 'Pas de matériel ? Aucun souci : le sol, un mur et une porte suffisent.', m: 'happy', a: 'hop' },
+      push: { t: 'Sois honnête, je ne juge pas !', m: 'wink' },
+      pull: { t: 'Zéro traction ? C’est normal au début. On va y arriver ensemble.', m: 'determined', a: 'flex' },
+      atr: { t: 'L’ATR impressionne au début. Je vais te guider pas à pas.', m: 'excited', a: 'hop' },
+      days: { t: 'Trois séances par semaine, c’est parfait pour progresser sans se cramer.', m: 'happy' }
+    }[obQuestions()[OB.qi]];
+  }
+  function playerTapPool() {
+    var st = curStep();
+    if (st.k === 'rest') return [{ t: 'Respire profondément. Encore quelques secondes et on repart !', m: 'happy' }, { t: 'Secoue les bras, détends les épaules.', m: 'wink' }];
+    if (st.k === 'set') { var e = PL.sess.items[st.i].ex; return [{ t: e.cues[0], m: 'determined', a: 'flex' }, { t: e.cues[1], m: 'wink' }]; }
+    return [{ t: 'Je suis fier de toi !', m: 'love', a: 'hop' }];
+  }
+  function tapPool() {
+    if (PL) return playerTapPool();
+    if (!S.onboarded || OB.active) return [obLine()];
+    var s = S, lines = [viewLine()], sim = simulate(s, 52), ms = milestones(sim, 52)[0], x = nextUnlocks(s)[0], streak = streakWeeks(s), near = nearLine();
+    if (near) lines.push(near);
+    if (ms) lines.push({ t: 'Si tu tiens le rythme : ' + lc(ms.txt) + ', ' + atWeek(ms.w) + '. Je le sens bien !', m: 'excited', a: 'hop' });
+    if (x) lines.push({ t: 'Prochain niveau : ' + x.nx.name + '. Tu en es à ' + Math.round(x.pct * 100) + ' % de l’objectif.', m: 'determined', a: 'flex' });
+    if (streak >= 1) lines.push({ t: streak + ' semaine' + (streak > 1 ? 's' : '') + ' d’affilée à tenir ton objectif. Ne casse pas la série !', m: 'proud', a: 'flex' });
+    lines.push(TIPS[Math.floor(Math.random() * TIPS.length)]);
+    return lines;
+  }
+  function coachTap() {
+    var pool = tapPool().filter(Boolean);
+    if (pool.length) coachSay(pool[tapIdx++ % pool.length], true);
+  }
+  /* Une phrase la première fois qu'on ouvre chaque écran. */
+  function coachView(force) {
+    if (!coach) return;
+    var inOb = !S.onboarded || OB.active;
+    var key = inOb ? 'ob-' + OB.screen + '-' + OB.qi : view + (view === 'programme' ? '-' + ui.progTab : '');
+    if (coachSeen[key] && !force) return;
+    coachSeen[key] = true;
+    var line = inOb ? obLine() : viewLine();
+    setTimeout(function () { coachSay(line, false, true); }, 450);
+  }
+  var REST_LINES = ['Bien joué ! Respire un bon coup.', 'Propre ! Bois une gorgée d’eau.', 'Belle série ! Secoue les bras.', 'Ça avance bien, continue comme ça.', 'Tu gères ! Récupère bien.'];
+  /* Le coach pendant la séance. */
+  function coachStep() {
+    if (!coach || !PL) return;
+    var st = curStep(), line = null;
+    if (st.k === 'warm') line = { t: 'On s’échauffe d’abord. Tes articulations vont me remercier !', m: 'happy', a: 'wave' };
+    else if (st.k === 'set') {
+      var it = PL.sess.items[st.i], e = it.ex, c = chain(e.f, S), next = c[c.indexOf(e) + 1];
+      if (st.i === PL.sess.items.length - 1 && st.s === it.sets - 1) line = { t: 'Dernière série de la séance ! Donne tout !', m: 'effort', a: 'flex' };
+      else if (st.s === 0 && it.main && next && it.target >= e.unlock) line = { t: 'Tiens ' + it.target + unitShort(e) + ' sur toutes les séries et tu débloques ' + next.name + ' !', m: 'excited', a: 'hop' };
+      else if (st.s === 0) line = { t: e.name + ' : objectif ' + it.target + ' ' + unitLong(e, it.target) + '. Je compte avec toi !', m: 'determined', a: 'flex' };
+    } else if (st.k === 'rest') {
+      var prev = PL.log[st.i][st.s], tgt = PL.sess.items[st.i].target;
+      if (prev != null && prev < tgt) line = { t: 'Pas grave, on fait de son mieux. La prochaine sera meilleure !', m: 'love' };
+      else if (prev != null && prev > tgt) line = { t: 'Plus que l’objectif ! Tu m’impressionnes.', m: 'surprised', a: 'hop' };
+      else if (Math.random() < 0.55) line = { t: REST_LINES[Math.floor(Math.random() * REST_LINES.length)], m: 'happy' };
+    } else if (st.k === 'done' && totalsOf(PL).sets) {
+      lastAuto = 0;
+      line = { t: 'Séance terminée ! Je suis fier de toi. Comment c’était ?', m: 'love', a: 'celebrate' };
+    }
+    coachSay(line, false, st.k !== 'rest');
+  }
+  function coachResult(R) {
+    var line;
+    if (R.unlocks.length) line = { t: 'Nouveau niveau débloqué : ' + EXM[R.unlocks[0]].name + ' ! Trop fort !', m: 'cool', a: 'celebrate' };
+    else if (R.rankUp) line = { t: 'Tu passes ' + R.rankUp + ' ! Ça se fête.', m: 'proud', a: 'celebrate' };
+    else if (R.badges.length) line = { t: 'Nouveau badge : ' + D.BADGES.find(function (b) { return b.id === R.badges[0]; }).name + ' ! Ta collection grandit.', m: 'excited', a: 'hop' };
+    else line = { t: 'Bien joué ! Tes objectifs s’ajustent pour la prochaine séance.', m: 'proud', a: 'flex' };
+    coachSay(line, false, true);
+  }
+
+  /* Tuto d'un exercice : mini vidéo, muscles, intérêt, points clés, erreurs. */
+  function mountTuto(host, e, mini) {
+    if (!host || !window.GraviteTuto) return null;
+    var ctl = window.GraviteTuto.mount(host, e.id, { color: FAM[e.f].color, mini: !!mini });
+    if (!mini) sheetTv = ctl;
+    return ctl;
+  }
+  function tutoBlock(e) {
+    var info = window.GraviteTuto && window.GraviteTuto.info(e.id);
+    var cues = '<div class="cues">' + e.cues.map(function (q) { return '<div>' + I.check + '<span>' + esc(q) + '</span></div>'; }).join('') + '</div>';
+    if (!info) return cues;
+    var chips = function (str, cls) { return str ? str.split(', ').map(function (m) { return '<span class="chip ' + cls + '">' + esc(m.charAt(0).toUpperCase() + m.slice(1)) + '</span>'; }).join('') : ''; };
+    return '<div class="tuto"><div class="tv-host"></div>' +
+      '<div class="seg tv-seg" role="group" aria-label="Exemple montré"><button type="button" data-act="tv-mode" data-v="good" aria-pressed="true">' + I.check + 'Bonne exécution</button>' +
+      '<button type="button" data-act="tv-mode" data-v="bad" aria-pressed="false">' + I.close + 'À éviter</button></div>' +
+      '<div class="tuto-sec"><h3>Muscles travaillés</h3><div class="summary-chips">' + chips(info.m, 'violet') + chips(info.s, 'dim') + '</div></div>' +
+      '<div class="tuto-sec"><h3>Pourquoi le faire</h3><p>' + esc(info.why) + '</p></div>' +
+      '<div class="tuto-sec"><h3>Points clés</h3>' + cues + '</div>' +
+      '<div class="tuto-sec"><h3>Erreurs à éviter</h3><ul class="errs">' + info.err.map(function (x) { return '<li>' + I.close + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul></div></div>';
+  }
+
   /* ================= Démarrage ================= */
   render();
+  setTimeout(function () { coachView(); }, 700);
   Store.connect().then(function (remote) {
     var r = remote ? normalize(remote) : null;
     if (r && (r.updatedAt || 0) > (REAL.updatedAt || 0)) {
