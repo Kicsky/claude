@@ -216,7 +216,11 @@ window.GRAVITE_DATA = (function () {
     { id: 'pullup',    name: 'Menton au-dessus',   desc: 'Atteins les tractions supination' },
     { id: 'handstand', name: 'Tête en bas',        desc: 'Atteins l’ATR libre' },
     { id: 'early',     name: 'Lève-tôt',           desc: 'Une séance terminée avant 8 h' },
-    { id: 'night',     name: 'Oiseau de nuit',     desc: 'Une séance terminée après 21 h' }
+    { id: 'night',     name: 'Oiseau de nuit',     desc: 'Une séance terminée après 21 h' },
+    { id: 'chal1',     name: 'Défi relevé',        desc: 'Relève ton premier défi de la semaine' },
+    { id: 'chal10',    name: 'Chasseur de défis',  desc: '10 défis relevés' },
+    { id: 'chal30',    name: 'Inépuisable',        desc: '30 défis relevés' },
+    { id: 'chalweek',  name: 'Semaine parfaite',   desc: 'Les 3 défis d’une même semaine' }
   ];
 
   var QUOTES = [

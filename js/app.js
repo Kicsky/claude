@@ -678,6 +678,7 @@
         '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="acc-open" data-v="signup">Créer un compte</button>' +
         '<button class="btn ghost" type="button" data-act="nudge-off">Plus tard</button></div></div></div>';
     }
+    if (!demo || s.history.length) html += challengesCard(s);
     // Projection à 3 mois
     var ms = milestones(sim, 52)[0];
     html += '<div class="section-head"><h2>Dans 3 mois</h2><button class="link" type="button" data-act="go-traj">Voir mon planning</button></div>' +
@@ -1690,6 +1691,8 @@
         var R = PL.result, rw = [];
         if (R.rankUp) rw.push(reward(I.bolt, 'Nouveau rang : ' + R.rankUp, 'Ton expérience te fait monter en grade.'));
         R.unlocks.forEach(function (id) { var x = EXM[id]; rw.push(reward(PIC[x.f], 'Niveau débloqué : ' + esc(x.name), FAM[x.f].name + ' · nouvel objectif ' + targetOf(x, S) + unitShort(x))); });
+        if (R.challenges) R.challenges.list.forEach(function (c) { rw.push(reward(I.target, 'Défi relevé : ' + chTitle(c), '+' + c.xp + ' XP')); });
+        if (R.challenges && R.challenges.perfect) rw.push(reward(I.trophy, 'Semaine parfaite !', 'Les 3 défis de la semaine : +150 XP de bonus'));
         R.badges.forEach(function (id) { var b = D.BADGES.find(function (y) { return y.id === id; }); rw.push(reward(I.star, 'Badge : ' + b.name, b.desc)); });
         R.prs.forEach(function (p) { var x = EXM[p.id]; rw.push(reward(I.trophy, 'Record : ' + esc(x.name), p.v + (x.type === 'time' ? ' s' : ' répétitions') + ' en une série')); });
         var ups = R.changes.filter(function (c) { return c.to > c.from; });
@@ -1798,6 +1801,8 @@
         var before = rankOf(S.xp).i;
         var res = applySession(PL.sess, PL.log, PL.fb, new Date(), S, { advance: PL.advance, dur: Math.round((Date.now() - PL.startedAt) / 1000) });
         if (!res) { closePlayer(); break; }
+        var chal = checkChallenges(S);
+        res.xp += chal.xp; res.badges = res.badges.concat(chal.badges); res.challenges = chal;
         save(); clearResume();
         var after = rankOf(S.xp).i;
         res.rankUp = after > before ? D.RANKS[after].name : null;
@@ -1960,6 +1965,9 @@
     if (!S.onboarded || OB.active) return [obLine()];
     var s = S, lines = [viewLine()], sim = simulate(s, 52), ms = milestones(sim, 52)[0], x = nextUnlocks(s)[0], streak = streakWeeks(s), near = nearLine();
     if (near) lines.push(near);
+    var cw = weekChallenges(s), cc = cw.list.filter(function (c) { return cw.done.indexOf(c.id) < 0; })
+      .map(function (c) { return { c: c, r: chProgress(c, s) / c.target }; }).sort(function (a, b) { return b.r - a.r; })[0];
+    if (cc) lines.push({ t: 'Défi : ' + chTitle(cc.c) + ' (' + Math.round(Math.min(1, cc.r) * 100) + ' %)', m: 'determined', a: 'flex' });
     if (ms) lines.push({ t: 'Bientôt : ' + lc(ms.txt) + ' !', m: 'excited', a: 'hop' });
     if (x) lines.push({ t: 'Prochain niveau : ' + x.nx.name + ' (' + Math.round(x.pct * 100) + ' %)', m: 'determined', a: 'flex' });
     if (streak >= 1) lines.push({ t: streak + ' semaine' + (streak > 1 ? 's' : '') + ' d’affilée, continue !', m: 'proud', a: 'flex' });
@@ -2005,6 +2013,8 @@
   function coachResult(R) {
     var line;
     if (R.unlocks.length) line = { t: 'Niveau débloqué : ' + EXM[R.unlocks[0]].name + ' !', m: 'cool', a: 'celebrate' };
+    else if (R.challenges && R.challenges.perfect) line = { t: 'Semaine parfaite, 3 défis sur 3 !', m: 'cool', a: 'celebrate' };
+    else if (R.challenges && R.challenges.list.length) line = { t: 'Défi relevé : ' + chTitle(R.challenges.list[0]) + ' !', m: 'proud', a: 'celebrate' };
     else if (R.rankUp) line = { t: 'Tu passes ' + R.rankUp + ' !', m: 'proud', a: 'celebrate' };
     else if (R.badges.length) line = { t: 'Nouveau badge : ' + D.BADGES.find(function (b) { return b.id === R.badges[0]; }).name + ' !', m: 'excited', a: 'hop' };
     else line = { t: 'Bien joué ! Objectifs ajustés.', m: 'proud', a: 'flex' };
@@ -2342,6 +2352,121 @@
   }
   window.addEventListener('resize', tourReflow);
   document.addEventListener('scroll', tourReflow, true);
+
+  /* ================= Défis de la semaine ================= */
+  var CH_FAM = { push: 'de poussée', pull: 'de tirage', legs: 'de jambes', core: 'de gainage' };
+  var CH_SUB = {
+    push: 'Pompes, dips… chaque répétition compte.', pull: 'Rowings, tractions… tout compte.',
+    legs: 'Squats, fentes… tout compte.', core: 'Relevés de genoux et de jambes.'
+  };
+  function niceRound(v, step) { return Math.max(step, Math.round(v / step) * step); }
+  function fmtSecs(n) { var m = Math.floor(n / 60), r = n % 60; return m ? m + ' min' + (r ? ' ' + pad(r) : '') : n + ' s'; }
+  /* Volume prévu par le programme sur une semaine. */
+  function plannedWeek(s) {
+    var out = { reps: {}, secs: {}, sets: 0 };
+    planOf(s).forEach(function (tpl) {
+      buildSession(tpl, s).items.forEach(function (it) {
+        var e = it.ex, bucket = e.type === 'time' ? out.secs : out.reps;
+        out.sets += it.sets;
+        bucket[e.f] = (bucket[e.f] || 0) + it.sets * it.target;
+      });
+    });
+    return out;
+  }
+  /* Trois défis par semaine, calés sur le programme (environ 90 % du volume prévu). */
+  function genChallenges(s, ws) {
+    var pl = plannedWeek(s), seed = Math.round(ws.getTime() / (7 * DAY)), list = [];
+    var fams = ['push', 'pull', 'legs', 'core'].filter(function (f) { return (pl.reps[f] || 0) >= 20; });
+    if (fams.length) {
+      var f = fams[seed % fams.length], t = pl.reps[f] * 0.9;
+      list.push({ id: 'reps-' + f, k: 'reps', f: f, target: niceRound(t, t >= 100 ? 10 : 5), xp: 100 });
+    }
+    var holds = ['core', 'atr'].filter(function (x) { return (pl.secs[x] || 0) >= 30; });
+    if (seed % 2 === 0 && holds.length) {
+      var hf = holds[Math.floor(seed / 2) % holds.length];
+      list.push({ id: 'secs-' + hf, k: 'secs', f: hf, target: niceRound(pl.secs[hf] * 0.9, 15), xp: 100 });
+    } else list.push({ id: 'perfect', k: 'perfect', target: niceRound(pl.sets * 0.7, 5), xp: 100 });
+    list.push(seed % 3 === 2 ? { id: 'variety', k: 'variety', target: 5, xp: 100 } : { id: 'sessions', k: 'sessions', target: s.profile.days, xp: 100 });
+    return list;
+  }
+  /* Les défis sont fixés le premier jour où on les voit, pour toute la semaine. */
+  function weekChallenges(s) {
+    var ws = weekStart(new Date()), key = dayKey(ws);
+    s.challenges = s.challenges || {};
+    if (!s.challenges[key]) {
+      s.challenges[key] = { list: genChallenges(s, ws), done: [] };
+      Object.keys(s.challenges).sort().slice(0, -8).forEach(function (k) { delete s.challenges[k]; });
+      if (s === S) save();
+    }
+    return s.challenges[key];
+  }
+  function chProgress(c, s) {
+    var hs = sessionsInWeek(weekStart(new Date()), s), v = 0, fams = {};
+    if (c.k === 'sessions') return hs.length;
+    hs.forEach(function (h) {
+      (h.ex || []).forEach(function (x) {
+        var e = EXM[x.id];
+        if (!e) return;
+        fams[e.f] = 1;
+        (x.d || []).forEach(function (n) {
+          if (c.k === 'reps' && e.f === c.f && e.type !== 'time') v += n;
+          else if (c.k === 'secs' && e.f === c.f && e.type === 'time') v += n;
+          else if (c.k === 'perfect' && n >= x.t) v += 1;
+        });
+      });
+    });
+    return c.k === 'variety' ? Object.keys(fams).length : v;
+  }
+  function chTitle(c) {
+    return {
+      reps: c.target + ' répétitions ' + CH_FAM[c.f],
+      secs: fmtSecs(c.target) + (c.f === 'atr' ? ' en ATR' : ' de gainage tenu'),
+      perfect: c.target + (c.target > 1 ? ' séries réussies' : ' série réussie'),
+      sessions: 'Semaine complète',
+      variety: 'Touche-à-tout'
+    }[c.k];
+  }
+  function chSub(c) {
+    return {
+      reps: CH_SUB[c.f],
+      secs: c.f === 'atr' ? 'Additionne tes secondes en équilibre.' : 'Planche, hollow, L-sit… tout s’additionne.',
+      perfect: 'Une série compte quand tu atteins son objectif.',
+      sessions: 'Termine tes ' + c.target + ' séances de la semaine.',
+      variety: 'Travaille les 5 familles de mouvements.'
+    }[c.k];
+  }
+  function chVal(c, v) { return c.k === 'secs' ? fmtSecs(v) : String(v); }
+  /* Après une séance : défis nouvellement relevés, avec leur XP et leurs badges. */
+  function checkChallenges(s) {
+    var w = weekChallenges(s), list = [], xp = 0, badges = [];
+    w.list.forEach(function (c) {
+      if (w.done.indexOf(c.id) < 0 && chProgress(c, s) >= c.target) { w.done.push(c.id); list.push(c); xp += c.xp; }
+    });
+    var perfect = list.length > 0 && w.done.length === w.list.length && !w.perfect;
+    if (perfect) { w.perfect = true; xp += 150; }
+    s.chTotal = (s.chTotal || 0) + list.length;
+    [['chal1', s.chTotal >= 1], ['chal10', s.chTotal >= 10], ['chal30', s.chTotal >= 30], ['chalweek', perfect]].forEach(function (b) {
+      if (b[1] && !s.badges[b[0]]) { s.badges[b[0]] = new Date().toISOString(); badges.push(b[0]); xp += 100; }
+    });
+    s.xp += xp;
+    return { list: list, perfect: perfect, xp: xp, badges: badges };
+  }
+  function challengesCard(s) {
+    var w = weekChallenges(s), left = 7 - daysBetween(weekStart(new Date()), new Date());
+    var html = '<div class="section-head"><h2>Défis de la semaine</h2><span class="faint" style="font-size:12.5px">' + w.done.length + ' / ' + w.list.length +
+      ' · encore ' + left + ' jour' + (left > 1 ? 's' : '') + '</span></div><div class="card ch-list">';
+    html += w.list.map(function (c) {
+      var done = w.done.indexOf(c.id) >= 0, v = Math.min(chProgress(c, s), c.target), pct = Math.round(v / c.target * 100);
+      return '<div class="ch-row' + (done ? ' done' : '') + '"><span class="ch-ic">' + (done ? I.check : I.target) + '</span><div>' +
+        '<div class="ch-top"><b>' + chTitle(c) + '</b><span class="ch-xp">' + (done ? 'Relevé' : '+' + c.xp + ' XP') + '</span></div>' +
+        '<p class="ch-sub">' + chSub(c) + '</p>' +
+        '<div class="progress' + (done ? ' good' : '') + '" role="progressbar" aria-label="' + chTitle(c) + '" aria-valuemin="0" aria-valuemax="' + c.target + '" aria-valuenow="' + v + '"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="ch-val"><span>' + chVal(c, v) + ' / ' + chVal(c, c.target) + '</span><span>' + pct + ' %</span></div></div></div>';
+    }).join('');
+    if (w.list.length && w.done.length === w.list.length) html += '<p class="ch-perfect">' + I.trophy + '<span>Semaine parfaite : les 3 défis sont relevés !</span></p>';
+    else html += '<p class="faint" style="font-size:12.5px">Les 3 défis relevés : +150 XP de bonus.</p>';
+    return html + '</div>';
+  }
 
   /* ================= Démarrage ================= */
   applyA11y();
