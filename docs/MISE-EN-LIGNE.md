@@ -86,11 +86,16 @@ Les rappels utilisent la même base Supabase (la table `push_subscriptions` est 
 ([`.github/workflows/rappels.yml`](../.github/workflows/rappels.yml)). Ils fonctionnent avec ou sans compte.
 
 1. Si tu as exécuté `supabase/schema.sql` avant l'ajout des rappels, exécute-le à nouveau (sans risque : il ne recrée rien d'existant).
-2. Sur GitHub : **Settings → Secrets and variables → Actions → New repository secret**, ajoute :
+2. **Crée la paire de clés des notifications** : ouvre `https://<ton-site>/outils/cles-notifications.html`
+   (par exemple <https://kicsky.github.io/claude/outils/cles-notifications.html>) et touche « Créer une paire de clés ».
+   Les clés sont créées dans ton navigateur, rien n'est envoyé sur Internet.
+   - la **clé publique** va dans [`js/config.js`](../js/config.js), champ `vapidPublicKey` ;
+   - la **clé privée** va uniquement dans le secret GitHub de l'étape suivante. Ne l'envoie à personne.
+3. Sur GitHub : **Settings → Secrets and variables → Actions → New repository secret**, ajoute :
    - `SUPABASE_SERVICE_ROLE_KEY` : Supabase → **Project Settings → API → service_role** (clé secrète, uniquement ici)
-   - `VAPID_PRIVATE_KEY` : la clé privée des notifications (fournie séparément ; elle va avec `vapidPublicKey` de `js/config.js`)
+   - `VAPID_PRIVATE_KEY` : la clé privée créée à l'étape 2
    - facultatif : `VAPID_SUBJECT` : `mailto:` suivi de ton adresse de contact
-3. **Actions → Rappels de séance → Run workflow** pour un premier essai. Le journal affiche seulement des totaux.
+4. **Actions → Rappels de séance → Run workflow** pour un premier essai. Le journal affiche seulement des totaux.
 
 Côté utilisateurs : **Profil → Rappels**, choisir les jours et l'heure, puis « M'envoyer un essai ».
 
@@ -98,8 +103,8 @@ Côté utilisateurs : **Profil → Rappels**, choisir les jours et l'heure, puis
 - **Android, ordinateur** : fonctionne depuis le navigateur (Chrome, Edge, Firefox) ou l'appli installée.
 - Les rappels partent à l'heure choisie (avec parfois quelques minutes de retard côté GitHub), seulement les jours choisis,
   et pas si la séance du jour est déjà faite.
-- Pour changer de paire de clés : `npx web-push generate-vapid-keys`, puis mettre la clé publique dans `js/config.js`
-  et la clé privée dans le secret `VAPID_PRIVATE_KEY` (les abonnements existants devront être réactivés).
+- Pour changer de paire de clés : recommence l'étape 2 et remplace la clé publique et le secret
+  (les personnes abonnées devront réactiver les rappels).
 
 ## Bon à savoir
 

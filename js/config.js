@@ -11,6 +11,7 @@
 window.GRAVITE_CONFIG = {
   supabaseUrl: '',
   supabaseAnonKey: '',
-  /* Clé publique des notifications (VAPID). La clé privée correspondante va dans les secrets GitHub. */
-  vapidPublicKey: 'BMX2e2EmPZ_4eG--yIAfxptsZBcBGaaZiaqCewzy_ZO0jv-b_Bw_zZiIEccQV3wVEhNh-1jr5allOyH-oDg7sJU'
+  /* Clé publique des notifications (VAPID), à créer avec outils/cles-notifications.html.
+     La clé privée correspondante va uniquement dans les secrets GitHub. */
+  vapidPublicKey: ''
 };

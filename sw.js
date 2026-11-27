@@ -1,5 +1,5 @@
 /* Calisthenics : cache hors ligne de l'application. */
-const CACHE = 'gravite-v8';
+const CACHE = 'gravite-v9';
 const SHELL = ['./', './index.html', './css/styles.css', './js/data.js', './js/config.js', './js/vendor/supabase.js', './js/cloud.js', './js/push.js', './js/mascot.js', './js/tutos.js', './js/app.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
