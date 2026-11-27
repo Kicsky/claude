@@ -79,11 +79,35 @@ Pour un site ouvert à tous :
 2. Clique sur le lien reçu par e-mail : tu reviens sur le site, connecté.
 3. Ouvre le site sur un autre appareil, **J'ai déjà un compte** : ta progression revient.
 
+## 6. Rappels de séance (notifications)
+
+Les rappels utilisent la même base Supabase (la table `push_subscriptions` est créée par
+[`supabase/schema.sql`](../supabase/schema.sql)) et un envoi automatique toutes les heures par GitHub Actions
+([`.github/workflows/rappels.yml`](../.github/workflows/rappels.yml)). Ils fonctionnent avec ou sans compte.
+
+1. Si tu as exécuté `supabase/schema.sql` avant l'ajout des rappels, exécute-le à nouveau (sans risque : il ne recrée rien d'existant).
+2. Sur GitHub : **Settings → Secrets and variables → Actions → New repository secret**, ajoute :
+   - `SUPABASE_SERVICE_ROLE_KEY` : Supabase → **Project Settings → API → service_role** (clé secrète, uniquement ici)
+   - `VAPID_PRIVATE_KEY` : la clé privée des notifications (fournie séparément ; elle va avec `vapidPublicKey` de `js/config.js`)
+   - facultatif : `VAPID_SUBJECT` : `mailto:` suivi de ton adresse de contact
+3. **Actions → Rappels de séance → Run workflow** pour un premier essai. Le journal affiche seulement des totaux.
+
+Côté utilisateurs : **Profil → Rappels**, choisir les jours et l'heure, puis « M'envoyer un essai ».
+
+- **iPhone** : iOS 16.4 ou plus récent, et uniquement depuis l'appli ajoutée à l'écran d'accueil (Safari → Partager → Sur l'écran d'accueil).
+- **Android, ordinateur** : fonctionne depuis le navigateur (Chrome, Edge, Firefox) ou l'appli installée.
+- Les rappels partent à l'heure choisie (avec parfois quelques minutes de retard côté GitHub), seulement les jours choisis,
+  et pas si la séance du jour est déjà faite.
+- Pour changer de paire de clés : `npx web-push generate-vapid-keys`, puis mettre la clé publique dans `js/config.js`
+  et la clé privée dans le secret `VAPID_PRIVATE_KEY` (les abonnements existants devront être réactivés).
+
 ## Bon à savoir
 
 - **Mise en veille** : actuellement, sur l'offre gratuite, un projet Supabase sans aucune activité pendant 7 jours est mis en pause.
   Il se relance depuis le tableau de bord Supabase. Avec des utilisateurs réguliers, cela n'arrive pas.
 - **Suppression de compte** : le bouton *Supprimer mon compte* efface le compte et sa progression en ligne
   (fonction `delete_account` créée à l'étape 1).
+- **Envoi automatique** : GitHub suspend les tâches planifiées d'un dépôt public après 60 jours sans aucune modification.
+  Un e-mail de GitHub prévient avant ; il suffit alors de réactiver le workflow dans l'onglet Actions.
 - **Installation sur téléphone** : sur le site publié, « Ajouter à l'écran d'accueil » installe Calisthenics comme une application,
   utilisable hors ligne.

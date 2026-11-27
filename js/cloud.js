@@ -91,6 +91,8 @@ window.GraviteCloud = (function () {
     status: function () { return state.status; },
     savedAt: function () { return state.savedAt; },
     signUp: signUp, signIn: signIn, signOut: signOut, resetPassword: resetPassword, updatePassword: updatePassword,
-    deleteAccount: deleteAccount, load: load, queueSave: queueSave
+    deleteAccount: deleteAccount, load: load, queueSave: queueSave,
+    /* Appel d'une fonction de la base (rappels : save_push, delete_push), avec ou sans compte. */
+    rpc: function (name, args) { return wrap(client.rpc(name, args)); }
   };
 })();

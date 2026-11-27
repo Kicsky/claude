@@ -33,6 +33,8 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
   (en touchant soi-même chaque onglet). À revoir depuis le profil.
 - **Comptes gratuits par e-mail** (facultatifs) : inscription, connexion, mot de passe oublié, suppression du compte,
   et sauvegarde automatique de la progression pour la retrouver sur tous ses appareils. Voir la mise en ligne ci-dessous.
+- **Rappels de séance** (notifications) : jours et heure au choix, messages selon ta progression
+  (« Ta série est en jeu ! »), pas de rappel si la séance du jour est faite. Envoi toutes les heures par GitHub Actions.
 - **Accessibilité** : texte plus grand, contraste renforcé, animations réduites, lecture à voix haute du coach et des consignes,
   navigation complète au clavier (Échap ferme les fenêtres), libellés pour les lecteurs d'écran.
 - Sauvegarde automatique sur l'appareil, export / import de la progression.
@@ -64,6 +66,8 @@ css/styles.css        thème sombre, verre liquide, animations
 js/data.js            exercices, parcours, séances, badges
 js/config.js          adresse et clé publique du projet Supabase (vide = sans comptes)
 js/cloud.js           comptes par e-mail et sauvegarde en ligne
+js/push.js            rappels de séance (notifications)
+scripts/rappels.mjs   envoi des rappels (lancé chaque heure par GitHub Actions)
 js/vendor/            bibliothèque Supabase (licence MIT)
 js/mascot.js          mascotte coach : sprite, expressions, bulles
 js/tutos.js           fiches et animations des 55 exercices

@@ -853,6 +853,13 @@ html.a11y-contrast :focus-visible { outline: 3px solid #ffffff; outline-offset: 
 html.a11y-calm *, html.a11y-calm *::before, html.a11y-calm *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 html.a11y-calm .aurora i { animation: none; }
 
+/* ---------- Rappels ---------- */
+.day-picks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.day-pick { min-height: 44px; padding: 0; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--ink-2); font-weight: 800; font-size: 14px; position: relative; overflow: hidden; }
+.day-pick[aria-pressed="true"] { color: #fff; border-color: transparent; background: linear-gradient(180deg, rgba(167, 125, 255, 0.95), rgba(91, 47, 224, 0.95)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+select.input { appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%); background-position: calc(100% - 22px) 22px, calc(100% - 16px) 22px; background-size: 6px 6px; background-repeat: no-repeat; }
+select.input option { background: #1a1230; color: var(--ink); }
+
 @media (min-width: 700px) {
   .app { padding-top: 34px; }
 }

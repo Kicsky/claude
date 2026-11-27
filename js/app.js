@@ -78,6 +78,7 @@
   };
   var PIC = {}; Object.keys(PIC_BODY).forEach(function (k) { PIC[k] = pic(PIC_BODY[k]); });
   I.eye = svg('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>');
+  I.bell = svg('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>');
   I.trend = svg('<path d="M3.5 17.5 9 12l4 4 7.5-8"/><path d="M15 8h5.5v5.5"/>');
   /* Icônes du matériel. */
   var EQI = {
@@ -200,6 +201,7 @@
     Store.writeLocal(S);
     Store.queueRemote(S);
     if (window.GraviteCloud && window.GraviteCloud.user()) window.GraviteCloud.queueSave(S);
+    if (S.profile.rem && S.profile.rem.on) scheduleRemSync();
   }
 
   /* ================= Logique du programme ================= */
@@ -1078,7 +1080,7 @@
       '<div class="toggle-row"><span class="t"><b>Coach bavard</b><span>La mascotte te parle d’elle-même (touche-la pour l’entendre)</span></span>' +
       '<button class="switch" type="button" role="switch" aria-label="Coach bavard" aria-checked="' + (p.coach !== false) + '" data-act="pf-coach"></button></div></div>';
 
-    html += accountCard() + a11yCard();
+    html += remCard() + accountCard() + a11yCard();
     html += '<div class="card" style="display:grid;gap:10px"><button class="btn block" type="button" data-act="tour">' + I.play + 'Revoir la visite guidée</button>' +
       '<button class="btn block" type="button" data-act="retake">' + I.refresh + 'Refaire le test de niveau</button>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn" type="button" data-act="export">' + I.copy + 'Exporter</button><button class="btn" type="button" data-act="import">Importer</button></div>' +
@@ -1356,6 +1358,33 @@
         S.profile.equip[ds.id] = !S.profile.equip[ds.id];
         save(); el.setAttribute('aria-checked', String(S.profile.equip[ds.id]));
         toast(EQ[ds.id].name + (S.profile.equip[ds.id] ? ' ajouté : programme adapté' : ' retiré : programme adapté'));
+        break;
+      case 'rem-toggle':
+        var rp = remPrefs();
+        if (!rp.on) {
+          el.disabled = true;
+          window.GravitePush.enable(rp, remCtx()).then(function () {
+            S.profile.rem = { on: true, days: rp.days, hour: rp.hour };
+            save(); render(); toast('Rappels activés');
+            coachSay({ t: 'Je te ferai signe les jours de séance !', m: 'happy', a: 'hop' }, true);
+          }, function (x) { toast(x.message); render(); });
+        } else {
+          S.profile.rem = Object.assign({}, S.profile.rem, { on: false });
+          save(); render();
+          window.GravitePush.disable().then(function () { toast('Rappels désactivés'); });
+        }
+        break;
+      case 'rem-day':
+        var rd = remPrefs(), dv = +ds.v, di = rd.days.indexOf(dv);
+        if (di >= 0 && rd.days.length === 1) { toast('Garde au moins un jour'); break; }
+        if (di >= 0) rd.days.splice(di, 1); else rd.days.push(dv);
+        S.profile.rem = { on: true, days: rd.days.sort(function (a, b) { return a - b; }), hour: rd.hour };
+        save();
+        el.setAttribute('aria-pressed', String(di < 0));
+        var rs = $('#rem-sum'); if (rs) rs.textContent = remSummary(remPrefs());
+        break;
+      case 'rem-test':
+        window.GravitePush.test().then(function () { toast('Notification d’essai envoyée'); }, function (x) { toast(x && x.message ? x.message : 'Impossible d’afficher la notification.'); });
         break;
       case 'tour': startTour(); break;
       case 'tour-next':
@@ -2234,7 +2263,7 @@
       { view: 'accueil', target: '.card-hero', text: 'Ta séance du jour. Touche un exercice pour son tuto, ou « Commencer » pour démarrer.', mood: 'excited', anim: 'hop' },
       { view: 'accueil', target: '.tab[data-view="programme"]', wait: true, text: '« Programme » : ta semaine et ton planning de progrès. Touche-le !', mood: 'happy', anim: 'walk' },
       { view: 'programme', target: '.tab[data-view="progres"]', wait: true, text: '« Progrès » : ton rang, tes niveaux et tes badges. Touche-le !', mood: 'determined', anim: 'walk' },
-      { view: 'progres', target: '.tab[data-view="profil"]', wait: true, text: '« Profil » : matériel, compte et accessibilité. Touche-le !', mood: 'wink', anim: 'walk' },
+      { view: 'progres', target: '.tab[data-view="profil"]', wait: true, text: '« Profil » : rappels, matériel, compte et accessibilité. Touche-le !', mood: 'wink', anim: 'walk' },
       { view: 'accueil', target: '#app .mascot', final: true, text: 'Et moi, je reste ici. Touche-moi pour un conseil !', mood: 'love', anim: 'celebrate' }
     ];
   }
@@ -2343,6 +2372,73 @@
   window.addEventListener('resize', tourReflow);
   document.addEventListener('scroll', tourReflow, true);
 
+  /* ================= Rappels (notifications) ================= */
+  var remT = null, DAYS_FR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'], DAYS_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+  function remOk() { return !!(window.GravitePush && window.GravitePush.ready()) && !demo; }
+  function remDefaultDays(n) { return { 2: [2, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] }[n] || [1, 3, 5]; }
+  function remPrefs() {
+    var r = S.profile.rem || {};
+    var days = (r.days && r.days.length ? r.days : remDefaultDays(S.profile.days)).slice().sort(function (a, b) { return a - b; });
+    return { on: !!r.on, days: days, hour: r.hour != null ? +r.hour : 18 };
+  }
+  /* Ce que le serveur sait pour personnaliser le rappel (aucune donnée personnelle). */
+  function remCtx() {
+    var s = S, last = s.history[s.history.length - 1];
+    return { next: D.TEMPLATES[nextTpl(s)].name, goal: s.profile.days, weekDone: sessionsInWeek(weekStart(new Date()), s).length, streak: streakWeeks(s), last: last ? dayKey(new Date(last.at)) : null };
+  }
+  function scheduleRemSync() {
+    clearTimeout(remT);
+    remT = setTimeout(function () {
+      var p = remPrefs();
+      if (p.on && remOk()) window.GravitePush.update(p, remCtx()).catch(function () { /* nouvel essai à la prochaine modification */ });
+    }, 2500);
+  }
+  function listDays(days) {
+    var n = days.map(function (d) { return DAYS_LONG[d - 1]; });
+    return n.length > 1 ? n.slice(0, -1).join(', ') + ' et ' + n[n.length - 1] : n[0];
+  }
+  function remSummary(p) { return p.on ? 'Le ' + listDays(p.days) + ', à ' + p.hour + ' h' : 'Une notification les jours d’entraînement'; }
+  function remCard() {
+    if (!remOk()) return '';
+    var p = remPrefs(), P = window.GravitePush, html = '<div class="section-head"><h2>Rappels</h2></div><div class="card" id="rem-card" style="display:grid;gap:14px">';
+    if (P.needsInstall()) {
+      return html + '<div class="equip-tip"><span class="eq-ic">' + I.bell + '</span><div><b>Ajoute l’appli à ton écran d’accueil</b>' +
+        '<p class="faint" style="font-size:13px">Sur iPhone, les rappels ne marchent que depuis l’appli installée : touche Partager, puis « Sur l’écran d’accueil », et ouvre l’appli depuis son icône.</p></div></div></div>';
+    }
+    html += '<div class="toggle-row"><span class="t"><b>Me rappeler mes séances</b><span id="rem-sum">' + remSummary(p) + '</span></span>' +
+      '<button class="switch" type="button" role="switch" aria-label="Me rappeler mes séances" aria-checked="' + p.on + '" data-act="rem-toggle"></button></div>';
+    if (P.permission() === 'denied') html += '<p class="form-err">Les notifications sont bloquées pour ce site. Autorise-les dans les réglages du navigateur.</p>';
+    if (p.on) {
+      var hours = '';
+      for (var h = 6; h <= 22; h++) hours += '<option value="' + h + '"' + (h === p.hour ? ' selected' : '') + '>' + h + ' h 00</option>';
+      html += '<div class="field"><span class="label" id="rem-days-label">Jours</span><div class="day-picks" role="group" aria-labelledby="rem-days-label">' +
+        DAYS_FR.map(function (l, i) {
+          return '<button type="button" class="day-pick" data-act="rem-day" data-v="' + (i + 1) + '" aria-pressed="' + (p.days.indexOf(i + 1) >= 0) + '" aria-label="' + DAYS_LONG[i] + '">' + l + '</button>';
+        }).join('') + '</div></div>' +
+        '<div class="field"><label for="rem-hour">Heure du rappel</label><select id="rem-hour" class="input">' + hours + '</select></div>' +
+        '<button class="btn block ghost" type="button" data-act="rem-test">' + I.bell + 'M’envoyer un essai</button>' +
+        '<p class="faint" style="font-size:12.5px">Pas de rappel si ta séance du jour est déjà faite.</p>';
+    }
+    return html + '</div>';
+  }
+  /* Au démarrage : si l'autorisation a été retirée, on désactive ; sinon on met à jour le serveur. */
+  function remBoot() {
+    if (!remOk()) return;
+    window.GravitePush.current().then(function (s) {
+      var p = remPrefs();
+      if (!s && p.on) { S.profile.rem = Object.assign({}, S.profile.rem, { on: false }); save(); if (view === 'profil' && !PL) render(); }
+      else if (s && p.on) scheduleRemSync();
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target.id !== 'rem-hour') return;
+    var p = remPrefs();
+    S.profile.rem = { on: p.on, days: p.days, hour: +e.target.value };
+    save();
+    var sum = $('#rem-sum'); if (sum) sum.textContent = remSummary(remPrefs());
+    toast('Rappel à ' + e.target.value + ' h');
+  });
+
   /* ================= Démarrage ================= */
   applyA11y();
   (function () {
@@ -2353,6 +2449,7 @@
   })();
   render();
   initCloud();
+  remBoot();
   setTimeout(function () {
     if (S.onboarded && !demo && !S.profile.tourDone && !readResume()) startTour(); else coachView();
   }, 900);
