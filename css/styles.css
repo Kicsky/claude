@@ -853,6 +853,22 @@ html.a11y-contrast :focus-visible { outline: 3px solid #ffffff; outline-offset: 
 html.a11y-calm *, html.a11y-calm *::before, html.a11y-calm *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 html.a11y-calm .aurora i { animation: none; }
 
+/* ---------- Défis ---------- */
+.ch-list { display: grid; gap: 16px; }
+.ch-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+.ch-ic { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: rgba(157, 112, 255, 0.14); color: var(--violet-2); }
+.ch-ic svg { width: 20px; height: 20px; }
+.ch-row.done .ch-ic { background: rgba(103, 228, 185, 0.14); color: var(--good); }
+.ch-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ch-top b { font-weight: 750; line-height: 1.25; }
+.ch-xp { font-family: var(--font-display); font-stretch: 112%; font-weight: 800; font-size: 12.5px; color: var(--violet-2); white-space: nowrap; }
+.ch-row.done .ch-xp { color: var(--good); }
+.ch-sub { font-size: 12.5px; color: var(--ink-3); margin: 2px 0 8px; }
+.ch-val { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.progress.good > i { background: linear-gradient(90deg, #2fa27b, var(--good)); }
+.ch-perfect { display: flex; gap: 8px; align-items: center; font-weight: 750; color: var(--good); font-size: 14px; }
+.ch-perfect svg { width: 20px; height: 20px; flex: none; }
+
 @media (min-width: 700px) {
   .app { padding-top: 34px; }
 }

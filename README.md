@@ -27,12 +27,14 @@ Interface sombre et violette, boutons en verre liquide, et une progression par n
   Réglage « Coach bavard » dans le profil.
 - **Tutos pour chaque exercice** : touche un exercice pour voir une mini vidéo animée (bonne exécution / erreur à éviter),
   les muscles travaillés, l'intérêt de l'exercice, les points clés et les erreurs fréquentes. La mini vidéo s'affiche aussi pendant la séance.
-- **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 16 badges, historique.
+- **Suivi** : rang et XP, série de semaines tenues, calendrier d'activité, répétitions par semaine, records, 20 badges, historique.
 - **Mode exemple** pour voir l'app remplie avant de commencer.
 - **Visite guidée** avec la mascotte : après le questionnaire, un tour rapide des 4 onglets en 5 étapes
   (en touchant soi-même chaque onglet). À revoir depuis le profil.
 - **Comptes gratuits par e-mail** (facultatifs) : inscription, connexion, mot de passe oublié, suppression du compte,
   et sauvegarde automatique de la progression pour la retrouver sur tous ses appareils. Voir la mise en ligne ci-dessous.
+- **Défis de la semaine** : 3 défis chaque lundi, calés sur ton programme (répétitions d'une famille, secondes de gainage
+  ou d'ATR, séries réussies, semaine complète, les 5 familles). +100 XP par défi, +150 XP si les 3 sont relevés, 4 badges.
 - **Accessibilité** : texte plus grand, contraste renforcé, animations réduites, lecture à voix haute du coach et des consignes,
   navigation complète au clavier (Échap ferme les fenêtres), libellés pour les lecteurs d'écran.
 - Sauvegarde automatique sur l'appareil, export / import de la progression.
